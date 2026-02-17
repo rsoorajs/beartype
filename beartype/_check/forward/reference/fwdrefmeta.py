@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # --------------------( LICENSE                            )--------------------
-# Copyright (c) 2014-2025 Beartype authors.
+# Copyright (c) 2014-2026 Beartype authors.
 # See "LICENSE" for further details.
 
 '''
@@ -55,7 +55,7 @@ class BeartypeForwardRefMeta(type):
     '''
 
     # ....................{ DUNDERS                        }....................
-    #FIXME: That's great, but still insufficient. Additionally:
+    #FIXME: This is great, but still insufficient. Additionally:
     #* If the caller resides in a "beartype."-prefixed submodule, do what we
     #  currently do.
     #* Else, immediately resolve the referent by accessing "__type_beartype__"
@@ -262,11 +262,11 @@ class BeartypeForwardRefMeta(type):
         from beartype._check.forward.reference.fwdrefmake import (
             make_forwardref_subbable_subtype)
 
-        # Return a new fully-qualified forward reference subclass concatenated
-        # as described above.
+        # Return a new fully-qualified forward reference proxy subclass
+        # concatenated as described above.
         return make_forwardref_subbable_subtype(
-            cls.__scope_name_beartype__,  # type: ignore[arg-type]
-            f'{cls.__name_beartype__}.{hint_name}',
+            hint_name=f'{cls.__name_beartype__}.{hint_name}',
+            scope_name=cls.__scope_name_beartype__,  # type: ignore[arg-type]
         )
 
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # --------------------( LICENSE                            )--------------------
-# Copyright (c) 2014-2025 Beartype authors.
+# Copyright (c) 2014-2026 Beartype authors.
 # See "LICENSE" for further details.
 
 '''
@@ -435,7 +435,7 @@ class BeartypeForwardScope(LexicalScope):
 
         # Forward reference proxy to be returned.
         forwardref_subtype = make_forwardref_subbable_subtype(
-            self._scope_name, hint_name)
+            hint_name=hint_name, scope_name=self._scope_name)
 
         # Cache this proxy, preventing the "dict" superclass from re-calling
         # this __missing__() dunder method on the next attempt to access this.

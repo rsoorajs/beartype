@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # --------------------( LICENSE                            )--------------------
-# Copyright (c) 2014-2025 Beartype authors.
+# Copyright (c) 2014-2026 Beartype authors.
 # See "LICENSE" for further details.
 
 '''
@@ -11,11 +11,12 @@ This private submodule is *not* intended for importation by downstream callers.
 '''
 
 # ....................{ IMPORTS                            }....................
+from beartype.roar import BeartypeModuleUnimportableWarning
 from beartype.roar._roarexc import _BeartypeUtilModuleException
 from beartype.typing import Optional
 from beartype._cave._cavefast import ModuleType
 from beartype._data.typing.datatyping import TypeException
-from beartype._util.error.utilerrwarn import warnings_ignored
+from beartype._util.error.utilerrwarn import issue_warning
 from beartype._util.text.utiltextidentifier import die_unless_identifier
 from beartype._util.text.utiltextversion import convert_str_version_to_tuple
 from importlib.metadata import version as get_module_version  # type: ignore[attr-defined]
@@ -108,25 +109,47 @@ def is_module(
     module_name: str,
 
     # Optional parameters.
-    is_warnings_ignore: bool = False,
+    is_ignore_import_exception: bool = False,
+    exception_cls: TypeException = _BeartypeUtilModuleException,
+    exception_prefix: str = 'Module ',
 ) -> bool:
     '''
     :data:`True` only if the module or C extension with the passed
     fully-qualified name is importable under the active Python interpreter.
 
+    This tester is intentionally *not* memoized (e.g., by ``@callable_cached``),
+    as the importability of modules can dynamically change throughout the
+    lifetime of this interpreter in response to dynamic module creation and
+    deletion as well as modification to low-level :mod:`importlib` machinery.
+
     Caveats
     -------
     **This tester dynamically imports this module as an unavoidable side effect
-    of performing this test.**
+    of performing this test.** Nonetheless, this tester is intentionally
+    implemented to be as safe as feasible if this module is only **partially
+    initialized** (i.e., if this module is currently still being imported and
+    thus has yet to be fully initialized).
 
     Parameters
     ----------
     module_name : str
         Fully-qualified name of the module to be imported.
-    is_warnings_ignore : bool, optional
-        :data:`True` only if this tester ignores *all* warnings transitively
-        emitted as a side effect by the importation of this module. Defaults to
-        :data:`False` for safety.
+    is_ignore_import_exception : bool, default: False
+        Either:
+
+        * If :data:`True`, this tester silently catches and ignores *any*
+          exception raised as a side effect by the importation of this module.
+        * If :data:`False`, this tester catches and coerces *any* otherwise
+          fatal exception raised as a side effect by the importation of this
+          module into a non-fatal warning.
+
+        Defaults to :data:`False` for safety.
+    exception_cls : type[Exception], default: _BeartypeUtilModuleException
+        Type of exception to be raised in the event of a fatal error. Defaults
+        to :exc:`._BeartypeUtilModuleException`.
+    exception_prefix : str, default: "Module "
+        Human-readable substring prefixing raised exception messages. Defaults
+        to a reasonably sensible prefix.
 
     Returns
     -------
@@ -139,34 +162,89 @@ def is_module(
         If a module with this name exists *but* that module is unimportable due
         to raising module-scoped exceptions at importation time.
     '''
+    assert isinstance(is_ignore_import_exception, bool), (
+        f'{repr(is_ignore_import_exception)} not boolean.')
 
+    # ....................{ IMPORTS                        }....................
     # Avoid circular import dependencies.
+    # from beartype._util.module.utilmodget import get_module_imported_or_none
+    # from beartype._util.module.utilmodimport import importlib_import_module
     from beartype._util.module.utilmodimport import import_module_or_none
 
+    # ....................{ LOCALS                         }....................
     # Module with this name if this module is importable *OR* "None" otherwise.
     module: Optional[ModuleType] = None
 
-    # If ignoring *ALL* warnings transitively emitted as a side effect by the
-    # importation of this module, attempt to dynamically import this module
-    # under a context manager ignoring these warnings.
-    if is_warnings_ignore:
-        with warnings_ignored():
-            module = import_module_or_none(module_name)
-    # Else, dynamically import this module *WITHOUT* ignoring these warnings.
-    else:
-        module = import_module_or_none(module_name)
+    # Exception raised by importing this module below if any *OR* "None".
+    import_exception: Optional[Exception] = None
 
-    # Return true only if this module is importable.
-    return module is not None
+    # ....................{ IMPORT                         }....................
+    # Attempt to dynamically import this module.
+    try:
+        module = import_module_or_none(
+            module_name=module_name,
+            # Avoid coercing import-time exceptions into warnings. Why? So that
+            # we can detect and handle the ignorable standard "ImportError"
+            # exception whose message implies this module to be importable but
+            # only currently partially initialized below.
+            is_warn_import_exception=False,
+            exception_cls=exception_cls,
+            exception_prefix=exception_prefix,
+        )
+
+        # Return true only if this module is importable.
+        return module is not None
+    # If doing so raises a standard "ImportError" exception possibly implying
+    # this module to be importable but only currently partially initialized...
+    except ImportError as exception:
+        # Message raised by this exception.
+        exception_message = str(exception)
+
+        # If this message claims this module to be only currently partially
+        # initialized, charitably assume this module to be subsequently fully
+        # initialized and thus importable by immediately returning true.
+        if "' from partially initialized module '" in exception_message:
+            # print(f'Ignoring partially initialized module "{module_name}"!')
+            return True
+        # Else, this message does *NOT* claim this module to be only currently
+        # partially initialized.
+
+        # Note this fact.
+        import_exception = exception
+    # If doing so raises any other exception, note this fact.
+    except Exception as exception:
+        import_exception = exception
+    # Since the above "try:" block did *NOT* return, an exception was raised.
+
+    # If the caller requests we *NOT* ignore this exception, coerce this fatal
+    # exception into a non-fatal warning.
+    if not is_ignore_import_exception:
+        issue_warning(
+            cls=BeartypeModuleUnimportableWarning,
+            message=(
+                f'Ignoring module "{module_name}" importation exception:'
+                f'\n\t{import_exception.__class__.__name__}: {import_exception}'
+            ),
+        )
+    # Else, the caller requests we ignore this exception. Do so! \o/
+
+    # ....................{ RETURN                         }....................
+    # Return false as a fallback.
+    return False
 
 
-#FIXME: Unit test us up against "setuptools", the only third-party package
-#*BASICALLY* guaranteed to be importable.
+#FIXME: Unit test us up against @beartype itself, the only third-party package
+#guaranteed to be importable.
 def is_module_version_at_least(module_name: str, version_minimum: str) -> bool:
     '''
     :data:`True` only if the module or C extension with the passed
     fully-qualified name is both importable under the active Python interpreter
     *and* at least as new as the passed version.
+
+    This tester is intentionally *not* memoized (e.g., by ``@callable_cached``),
+    as the importability of modules can dynamically change throughout the
+    lifetime of this interpreter in response to dynamic module creation and
+    deletion as well as modification to low-level :mod:`importlib` machinery.
 
     Caveats
     -------

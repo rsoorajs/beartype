@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # --------------------( LICENSE                            )--------------------
-# Copyright (c) 2014-2025 Beartype authors.
+# Copyright (c) 2014-2026 Beartype authors.
 # See "LICENSE" for further details.
 
 '''
@@ -54,10 +54,10 @@ Fully-qualified name of the current test module.
 
 # ....................{ FORWARDREFS ~ invalid              }....................
 FORWARDREF_RELATIVE_CIRCULAR = make_forwardref_subbable_subtype(
-    # Fully-qualified name of the current test module.
-    SCOPE_NAME,
     # Unqualified basename of this global currently being declared.
-    'FORWARDREF_RELATIVE_CIRCULAR',
+    hint_name='FORWARDREF_RELATIVE_CIRCULAR',
+    # Fully-qualified name of the current test module.
+    scope_name=SCOPE_NAME,
 )
 '''
 **Circular forward reference proxy** (i.e., invalid proxy circularly and thus
@@ -70,9 +70,9 @@ own data submodule.
 
 # ....................{ FORWARDREFS ~ valid                }....................
 FORWARDREF_ABSOLUTE = make_forwardref_subbable_subtype(
+    hint_name=CLASS_NAME,
     # Intentionally ignored fully-qualified name of this test submodule.
-    SCOPE_NAME,
-    CLASS_NAME,
+    scope_name=SCOPE_NAME,
 )
 '''
 Forward reference proxy to an unsubscripted class referenced with an absolute
@@ -81,7 +81,7 @@ Forward reference proxy to an unsubscripted class referenced with an absolute
 
 
 FORWARDREF_RELATIVE = make_forwardref_subbable_subtype(
-    MODULE_NAME, CLASS_BASENAME)
+    hint_name=CLASS_BASENAME, scope_name=MODULE_NAME)
 '''
 Forward reference proxy to an unsubscripted class referenced with a
 relative (i.e., unqualified) name.
@@ -89,9 +89,10 @@ relative (i.e., unqualified) name.
 
 
 FORWARDREF_MODULE_ABSOLUTE = make_forwardref_subbable_subtype(
+    hint_name=MODULE_NAME,
+
     # Intentionally ignored fully-qualified name of this test submodule.
-    SCOPE_NAME,
-    MODULE_NAME,
+    scope_name=SCOPE_NAME,
 )
 '''
 Forward reference proxy to a submodule of a subpackage referenced with an

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # --------------------( LICENSE                            )--------------------
-# Copyright (c) 2014-2025 Beartype authors.
+# Copyright (c) 2014-2026 Beartype authors.
 # See "LICENSE" for further details.
 
 '''
@@ -370,7 +370,7 @@ def resolve_hint_pep484_ref_str_decor_meta(
             # of this type until required by a runtime type-check performed
             # during some subsequent call to the currently decorated callable.
             hint_resolved = make_forwardref_subbable_subtype(
-                scope_name=func_module_name, hint_name=hint)
+                hint_name=hint, scope_name=func_module_name)
 
             # Resolve this stringified forward reference to this proxy.
             return hint_resolved

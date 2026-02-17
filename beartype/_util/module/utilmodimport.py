@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # --------------------( LICENSE                            )--------------------
-# Copyright (c) 2014-2025 Beartype authors.
+# Copyright (c) 2014-2026 Beartype authors.
 # See "LICENSE" for further details.
 
 '''
@@ -80,8 +80,9 @@ def import_module_or_none(
     module_name: str,
 
     # Optional parameters.
+    is_warn_import_exception: bool = True,
     exception_cls: TypeException = _BeartypeUtilModuleException,
-    exception_prefix: str = 'Module attribute ',
+    exception_prefix: str = 'Module ',
 ) -> Optional[ModuleType]:
     '''
     Dynamically import and return the module, package, or C extension with the
@@ -96,10 +97,14 @@ def import_module_or_none(
     ----------
     module_name : str
         Fully-qualified name of the module to be imported.
+    is_warn_import_exception : bool, default: True
+        :data:`True` only if this function coerces otherwise fatal exceptions
+        raised as a side effect by the importation of this module into non-fatal
+        warnings. Defaults to :data:`True` for safety.
     exception_cls : type[Exception], default: _BeartypeUtilModuleException
         Type of exception to be raised in the event of a fatal error. Defaults
         to :exc:`._BeartypeUtilModuleException`.
-    exception_prefix : str, default: "Module attribute "
+    exception_prefix : str, default: "Module "
         Human-readable substring prefixing raised exception messages. Defaults
         to a reasonably sensible prefix.
 
@@ -122,10 +127,14 @@ def import_module_or_none(
         If a module with this name exists *but* that module is unimportable due
         to raising module-scoped exceptions at importation time.
     '''
+    assert isinstance(is_warn_import_exception, bool), (
+        f'{repr(is_warn_import_exception)} not boolean.')
 
+    # ....................{ IMPORTS                        }....................
     # Avoid circular import dependencies.
     from beartype._util.module.utilmodget import get_module_imported_or_none
 
+    # ....................{ LOCALS                         }....................
     # Module cached with "sys.modules" if this module has already been imported
     # elsewhere under the active Python interpreter *OR* "None" otherwise.
     #
@@ -153,23 +162,33 @@ def import_module_or_none(
     )
     # Else, this module name is a syntactically valid Python identifier.
 
+    # ....................{ IMPORT                         }....................
     # Attempt to dynamically import and return this module.
     try:
         return importlib_import_module(module_name)
     # If this module does *NOT* exist, return "None".
     except ModuleNotFoundError:
         pass
-    # If this module exists but raises unexpected exceptions from module scope,
-    # first emit a non-fatal warning notifying the user and then return "None".
+    # Else, this module exists.
+    #
+    # If importing this module raises unexpected exceptions from module scope...
     except Exception as exception:
+        # If the caller requests we *NOT* coerce this exception into a warning,
+        # preserve this exception as is by re-raising this exception.
+        if not is_warn_import_exception:
+            raise
+        # Else, the caller requests we coerce this exception into a warning.
+
+        # First emit a warning with the same message and then return "None".
         issue_warning(
             cls=BeartypeModuleUnimportableWarning,
             message=(
-                f'Ignoring module "{module_name}" importation exception:\n'
-                f'    {exception.__class__.__name__}: {exception}'
+                f'Ignoring module "{module_name}" importation exception:'
+                f'\n\t{exception.__class__.__name__}: {exception}'
             ),
         )
 
+    # ....................{ RETURN                         }....................
     # Inform the caller that this module is unimportable.
     return None
 

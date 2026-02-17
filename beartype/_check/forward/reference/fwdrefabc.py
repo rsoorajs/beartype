@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # --------------------( LICENSE                            )--------------------
-# Copyright (c) 2014-2025 Beartype authors.
+# Copyright (c) 2014-2026 Beartype authors.
 # See "LICENSE" for further details.
 
 '''
@@ -30,8 +30,8 @@ from beartype._check.forward.reference.fwdrefmeta import BeartypeForwardRefMeta
 # ....................{ SUPERCLASSES                       }....................
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # CAUTION: The names of *ALL* class variables declared below *MUST* be both:
-# * Prefixed by "__beartype_".
-# * Suffixed by "__".
+# * Prefixed by "__".
+# * Suffixed by "_beartype__".
 #
 # If this is *NOT* done, these variables could induce a namespace conflict with
 # user-defined subpackages, submodules, and classes of the same names
@@ -70,7 +70,7 @@ class BeartypeForwardRefABC(object, metaclass=BeartypeForwardRefMeta):
     '''
 
     # ....................{ CLASS VARS ~ optional          }....................
-    __scope_name_beartype__: Optional[str] = None
+    __scope_name_beartype__: str = None  # type: ignore[assignment]
     '''
     Fully-qualified name of the lexical scope to which the type hint referenced
     by this forward reference subclass is relative if that type hint is relative

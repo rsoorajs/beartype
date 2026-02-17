@@ -1,5 +1,5 @@
 # --------------------( LICENSE                            )--------------------
-# Copyright (c) 2014-2025 Beartype authors.
+# Copyright (c) 2014-2026 Beartype authors.
 # See "LICENSE" for further details.
 #
 # --------------------( SYNOPSIS                           )--------------------
@@ -48,7 +48,7 @@ site_author: "Beartype"
 
 # Human-readable copyright line, typically injected into each page by the
 # third-party theme configured below.
-copyright: "Copyright (c) 2014-2025 Beartype authors."
+copyright: "Copyright (c) 2014-2026 Beartype authors."
 
 # URL of the repository documented by this site. 
 repo_url: https://github.com/beartype/beartype

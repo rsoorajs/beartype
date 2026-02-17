@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # --------------------( LICENSE                            )--------------------
-# Copyright (c) 2014-2025 Beartype authors.
+# Copyright (c) 2014-2026 Beartype authors.
 # See "LICENSE" for further details.
 
 '''
@@ -598,28 +598,29 @@ def iter_hint_pep695_unsubbed_forwardrefs(
     '''
     Iteratively create and yield one **forward reference proxy** (i.e.,
     :class:`beartype._check.forward.reference.fwdrefabc.BeartypeForwardRefABC`
-    subclass) for each unquoted relative forward reference in the passed
-    :pep:`695`-compliant **unsubscripted type alias** (i.e., object created by a
-    statement of the form ``type {alias_name} = {alias_value}``) to the
-    underlying type hint lazily referred to by this type alias.
+    subclass) for each :pep:`484`-compliant stringified relative forward
+    reference in the passed :pep:`695`-compliant **unsubscripted type alias**
+    (i.e., object created by a statement of the form ``type {alias_name} =
+    {alias_value}``) to the underlying type hint lazily referred to by this type
+    alias.
 
     This iterator is intentionally *not* memoized (e.g., by the
     :func:`callable_cached` decorator), as this iterator is intended to be
     called only once per unsubscripted type alias in userspace code dynamically
     instrumented by beartype import hook abstract syntax tree (AST) node
     transformers. Since those transformers are expected to replace *all*
-    unquoted relative forward references in this unsubscripted type alias with
-    corresponding forward reference proxies, calling this iterator again on any
-    unsubscripted type alias instrumented in this way *should* silently reduce
-    to a noop. "Should" is doing a lot of heavy lifting here.
+    stringified relative forward references in this unsubscripted type alias
+    with corresponding forward reference proxies, calling this iterator again on
+    any unsubscripted type alias instrumented in this way *should* silently
+    reduce to a noop. "Should" is doing a lot of heavy lifting here.
 
     Parameters
     ----------
     hint : HintPep695TypeAlias
         Unsubscripted type alias to be iterated over.
-    exception_prefix : str, optional
-        Human-readable substring prefixing exception messages raised by this
-        reducer. Defaults to the empty string.
+    exception_prefix : str, default: ''
+        Human-readable substring prefixing raised exception messages. Defaults
+        to the empty string.
 
     Yields
     ------
@@ -764,17 +765,14 @@ def iter_hint_pep695_unsubbed_forwardrefs(
 
             # Forward reference proxy to this undeclared attribute.
             #
-            # Note that:
-            # * This call is intentionally passed only positional parameters to
-            #   satisfy the @callable_cached decorator memoizing this function.
-            # * A full-blown forward reference proxy rather than a trivial
-            #   stringified forward reference (i.e., the relative name of the
-            #   undefined attribute being referred to, equivalent to
-            #   "hint_ref_name") is required here. Why? Subscription. A
-            #   stringified forward reference *CANNOT* be subscripted by
-            #   arbitrary child type hints; a forward reference proxy can be.
+            # Note that a full-blown forward reference proxy rather than a
+            # trivial stringified forward reference (i.e., the relative name of
+            # the undefined attribute being referred to, equivalent to
+            # "hint_ref_name") is required here. Why? Subscription. A
+            # stringified forward reference *CANNOT* be subscripted by arbitrary
+            # child type hints; a forward reference proxy can be.
             hint_ref = make_forwardref_subbable_subtype(
-                hint_module_name, hint_ref_name)
+                hint_name=hint_ref_name, scope_name=hint_module_name)
 
             # Yield this forward reference proxy to the caller.
             yield hint_ref

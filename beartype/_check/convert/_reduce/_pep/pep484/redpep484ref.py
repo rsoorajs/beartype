@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # --------------------( LICENSE                            )--------------------
-# Copyright (c) 2014-2025 Beartype authors.
+# Copyright (c) 2014-2026 Beartype authors.
 # See "LICENSE" for further details.
 
 '''
@@ -92,7 +92,7 @@ def reduce_hint_pep484_ref(
             # Reduce this runtime-unusable PEP 484-compliant object-oriented
             # forward reference to a runtime-usable forward reference proxy.
             hint_resolved = make_forwardref_subbable_subtype(
-                scope_name=ref_module_name, hint_name=ref_type_name)
+                hint_name=ref_type_name, scope_name=ref_module_name)
 
             # Return this proxy directly. All logic below assumes that "hint"
             # is now a stringified forward reference.

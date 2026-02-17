@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # --------------------( LICENSE                            )--------------------
-# Copyright (c) 2014-2025 Beartype authors.
+# Copyright (c) 2014-2026 Beartype authors.
 # See "LICENSE" for further details.
 
 '''
@@ -15,7 +15,6 @@ This private submodule is *not* intended for importation by downstream callers.
 
 # ....................{ IMPORTS                            }....................
 from beartype.roar import BeartypeDecorHintForwardRefException
-from beartype._cave._cavemap import NoneTypeOr
 from beartype._data.typing.datatyping import (
     BeartypeForwardRef,
     BeartypeForwardRefArgs,
@@ -29,12 +28,14 @@ from beartype._check.forward.reference.fwdrefabc import (
 )
 from beartype._util.cls.utilclsmake import make_type
 from beartype._util.text.utiltextidentifier import die_unless_identifier
-from typing import Optional
 
 # ....................{ FACTORIES                          }....................
 def make_forwardref_subbable_subtype(
-    scope_name: Optional[str],
+    # Mandatory parameters.
     hint_name: str,
+    scope_name: str,
+
+    # Optional parameters.
 ) -> type[BeartypeForwardRefSubbableABC]:
     '''
     Create and return a new **subscriptable forward reference subclass** (i.e.,
@@ -50,52 +51,41 @@ def make_forwardref_subbable_subtype(
 
     Parameters
     ----------
-    scope_name : Optional[str]
-        Possibly ignored lexical scope name. Specifically:
-
-        * If ``hint_name`` is absolute (i.e., contains one or more ``"."``
-          delimiters), this parameter is silently ignored in favour of the
-          fully-qualified name of the module prefixing ``hint_name``.
-        * If ``hint_name`` is relative (i.e., contains *no* ``"."`` delimiters),
-          this parameter declares the absolute (i.e., fully-qualified) name of
-          the lexical scope to which this unresolved type hint is relative.
-
-        The fully-qualified name of the module prefixing ``hint_name`` (if any)
-        thus *always* takes precedence over this lexical scope name, which only
-        provides a fallback to resolve relative forward references. While
-        unintuitive, this is needed to resolve absolute forward references.
     hint_name : str
         Relative (i.e., unqualified) or absolute (i.e., fully-qualified) name of
-        this unresolved type hint to be referenced.
+        this unresolved type hint to be proxied.
+    scope_name : str
+        Possibly ignored fully-qualified name of the lexical scope in which this
+        unresolved type hint was originally declared. For example:
+
+        * ``"some_package.some_module"`` for a module scope (e.g., to
+          resolve a global class or callable against this scope).
+        * ``"some_package.some_module.SomeClass"`` for a class scope (e.g.,
+          to resolve a nested class or callable against this scope).
 
     Returns
     -------
     type[BeartypeForwardRefSubbableABC]
-        Subscriptable forward reference subclass referencing this type hint.
+        Subscriptable forward reference proxy subclass proxying this type hint.
 
     Raises
     ------
     BeartypeDecorHintForwardRefException
-        If either:
-
-        * ``hint_name`` is *not* a syntactically valid Python identifier.
-        * ``scope_name`` is neither:
-
-          * A syntactically valid Python identifier.
-          * :data:`None`.
+        If either ``hint_name`` or ``scope_name`` are *not* syntactically valid
+        ``"."``-delimited Python identifiers.
     '''
 
     # Subscriptable forward reference to be returned.
     return _make_forwardref_subtype(  # type: ignore[return-value]
-        scope_name=scope_name,
         hint_name=hint_name,
+        scope_name=scope_name,
         type_bases=BeartypeForwardRefSubbableABC_BASES,
     )
 
 
 def make_forwardref_subbed_subtype(
-    scope_name: Optional[str],
     hint_name: str,
+    scope_name: str,
 ) -> type[BeartypeForwardRefSubbedABC]:
     '''
     Create and return a new **subscripted forward reference subclass** (i.e.,
@@ -111,52 +101,37 @@ def make_forwardref_subbed_subtype(
 
     Parameters
     ----------
-    scope_name : Optional[str]
-        Possibly ignored lexical scope name. Specifically:
-
-        * If ``hint_name`` is absolute (i.e., contains one or more ``"."``
-          delimiters), this parameter is silently ignored in favour of the
-          fully-qualified name of the module prefixing ``hint_name``.
-        * If ``hint_name`` is relative (i.e., contains *no* ``"."`` delimiters),
-          this parameter declares the absolute (i.e., fully-qualified) name of
-          the lexical scope to which this unresolved type hint is relative.
-
-        The fully-qualified name of the module prefixing ``hint_name`` (if any)
-        thus *always* takes precedence over this lexical scope name, which only
-        provides a fallback to resolve relative forward references. While
-        unintuitive, this is needed to resolve absolute forward references.
     hint_name : str
         Relative (i.e., unqualified) or absolute (i.e., fully-qualified) name of
-        this unresolved type hint to be referenced.
+        this unresolved type hint to be proxied.
+    scope_name : str
+        Possibly ignored fully-qualified name of the lexical scope in which this
+        unresolved type hint was originally declared. See also
+        :func:`.make_forwardref_subbable_subtype` for further details.
 
     Returns
     -------
     type[BeartypeForwardRefSubbedABC]
-        Subscriptable forward reference subclass referencing this type hint.
+        Subscriptable forward reference proxy subclass proxying this type hint.
 
     Raises
     ------
     BeartypeDecorHintForwardRefException
-        If either:
-
-        * ``hint_name`` is *not* a syntactically valid Python identifier.
-        * ``scope_name`` is neither:
-
-          * A syntactically valid Python identifier.
-          * :data:`None`.
+        If either ``hint_name`` or ``scope_name`` are *not* syntactically valid
+        ``"."``-delimited Python identifiers.
     '''
 
     # Subscriptable forward reference to be returned.
     return _make_forwardref_subtype(  # type: ignore[return-value]
-        scope_name=scope_name,
         hint_name=hint_name,
+        scope_name=scope_name,
         type_bases=BeartypeForwardRefSubbedABC_BASES,
     )
 
 # ....................{ PRIVATE ~ factories                }....................
 def _make_forwardref_subtype(
-    scope_name: Optional[str],
     hint_name: str,
+    scope_name: str,
     type_bases: TupleTypes,
 ) -> BeartypeForwardRef:
     '''
@@ -166,14 +141,68 @@ def _make_forwardref_subtype(
 
     This factory is internally memoized for efficiency.
 
+    Caveats
+    -------
+    **There is an unresolvable syntactic disambiguity between the following two
+    competing use cases:**
+
+    * When ``hint_name`` is an absolute forward reference (e.g.,
+      ``"muh_package.muh_submodule.MuhType"``). In this case, the
+      ``type_module_name`` local variable internally defined in the body of
+      this factory is a valid module name.
+    * When ``hint_name`` is a relative forward reference to a nested type (e.g.,
+      ``"MuhOuterType.MuhInnerType"``). In this case, ``type_module_name`` is
+      non-empty but *not* a valid module name.
+
+      Thankfully, nested types are entirely useless in Python and thus
+      *extremely* uncommon in real-world code. The latter use case is thus
+      largely ignorable (but still regrettable).
+
+      In theory, these two cases could be disambiguated in the body of this
+      factory by calling the :func:`.is_module` tester below like so:
+
+      .. code-block:: python
+
+         if not (
+             type_module_name and
+             is_module(type_module_name)
+         ):
+
+      In practice, doing so would be ill-advised. The whole point of forward
+      references is to defer module importation until *after* this early
+      decoration time. Importing arbitrary third-party modules at this early
+      decoration time would increase the likelihood of real-world issues in
+      production code *far* more severe than this syntactic ambiguity.
+
+      Lastly, note that third-party downstream consumers do have options here.
+      To avoid this syntactic ambiguity, users intending to create forward
+      references to nested types should either prefer unquoted forward
+      references under Python >= 3.14 *or* instantiate
+      :class:`.typing.ForwardRef` objects passed the ``module`` parameter: e.g.,
+
+      .. code-block:: python
+
+         # Instead of this ambiguous awfulness...
+         is_bearable(['ok'], list['MuhInnerType.MuhOuterType'])
+
+         # ...users should do this under Python >= 3.14:
+         from typing import ForwardRef
+         is_bearable(['ok'], list[MuhInnerType.MuhOuterType])
+
+         # ...or this under Python <= 3.14:
+         from typing import ForwardRef
+         is_bearable(['ok'], list[ForwardRef(
+             'MuhInnerType.MuhOuterType', module=__name__])
+
     Parameters
     ----------
-    scope_name : Optional[str]
-        Possibly ignored lexical scope name. See
-        :func:`.make_forwardref_subbable_subtype` for further details.
     hint_name : str
         Absolute (i.e., fully-qualified) or relative (i.e., unqualified) name of
-        the type hint referenced by this forward reference subclass.
+        this unresolved type hint to be proxied.
+    scope_name : str
+        Possibly ignored fully-qualified name of the lexical scope in which this
+        unresolved type hint was originally declared. See also
+        :func:`.make_forwardref_subbable_subtype` for further details.
     type_bases : Tuple[type, ...]
         Tuple of all base classes to be inherited by this forward reference
         subclass. For simplicity, this *must* be a 1-tuple ``(type_base,)``
@@ -183,57 +212,38 @@ def _make_forwardref_subtype(
     Returns
     -------
     BeartypeForwardRef
-        Forward reference subclass referencing this type hint.
+        Forward reference proxy subclass proxying this type hint.
 
     Raises
     ------
     BeartypeDecorHintForwardRefException
-        If either:
-
-        * ``hint_name`` is *not* a syntactically valid Python identifier.
-        * ``scope_name`` is neither:
-
-          * A syntactically valid Python identifier.
-          * :data:`None`.
+        If either ``hint_name`` or ``scope_name`` are *not* syntactically valid
+        ``"."``-delimited Python identifiers.
     '''
 
     # ....................{ MEMOIZE                        }....................
     # Memoization of forward references is guaranteed to be safe despite the
     # commonality of relative forward references that are contextually relative
     # to the current module and possibly current nested class hierarchy being
-    # decorated in that module. Why? Because the caller has (thankfully) already
-    # guaranteed the following pair of constraints to hold:
-    # * If the caller passed an unqualified "hint_name" and a "scope_name" that
-    #   is "None", then "hint_name" *MUST* be the name of a builtin type (e.g.,
-    #   "int", "str"). Clearly, builtin types are universal.
-    # * If the caller passed either a fully-qualified "hint_name" *OR* a
-    #   "scope_name" that is non-"None", then the caller has effectively passed
-    #   the absolute name of a fully-qualified module to which this forward
-    #   reference is relative. Altogether, this pair of "hint_name" and
-    #   "scope_name" parameters uniquely refers to a fully-qualified module
-    #   attribute and is thus also universal.
-    #
-    # How did the caller guarantee the above pair of constraints? Typically, by
-    # calling the external canonicalize_hint_pep484_ref() getter in
-    # the "beartype._util.hint.pep.proposal.pep484.pep484ref" submodule.
-    #
-    # Clearly, these constraints are mutually exclusive. Exactly one holds.
-    # Regardless of which constraint holds, this pair of "hint_name" and
-    # "scope_name" parameters uniquely refers to an absolute (rather than
-    # relative) attribute. From the low-level perspective of this factory,
-    # relative forward references are merely high-level syntactic sugar that the
-    # caller has already reduced on our behalf to equivalent absolute forward
-    # references and are thus of no interest or concern to this factory. Since
-    # memoization of absolute forward references is guaranteed to be safe,
+    # decorated in that module. Why? Because the caller is already guaranteed to
+    # have passed a fully-qualified "hint_name" and/or "scope_name". The caller
+    # has thus effectively passed the absolute name of a fully-qualified module
+    # to which this forward reference is relative. Altogether, this pair of
+    # "hint_name" and "scope_name" parameters uniquely refers to an absolute
+    # (rather than relative) module attribute. From the low-level perspective of
+    # this factory, relative forward references are high-level syntactic sugar
+    # the caller has already reduced on our behalf to equivalent absolute
+    # forward references and are thus of no interest or concern to this factory.
+    # Since memoization of absolute forward references is guaranteed to be safe,
     # memoization is guaranteed to be safe here. So say we all.
 
     # Tuple of all passed parameters (in arbitrary order).
     args: BeartypeForwardRefArgs = (scope_name, hint_name, type_bases)
 
+    #FIXME: [SPEED] Globalize this _forwardref_args_to_forwardref.get() method.
     # Forward reference proxy previously created and returned by a prior call to
     # this function passed these parameters if any *OR* "None" otherwise (i.e.,
     # if this is the first call to this function passed these parameters).
-    # forwardref_subtype: Optional[BeartypeForwardRef] = (
     forwardref_subtype = _forwardref_args_to_forwardref.get(args, None)
 
     # If this proxy has already been created, reuse and return this proxy as is.
@@ -244,9 +254,8 @@ def _make_forwardref_subtype(
     # ....................{ VALIDATE                       }....................
     # Validate all passed parameters *AFTER* attempting to reuse a previously
     # memoized forward reference, for efficiency.
-    assert isinstance(scope_name, NoneTypeOr[str]), (
-        f'{repr(scope_name)} neither string nor "None".')
     assert isinstance(hint_name, str), f'{repr(hint_name)} not string.'
+    assert isinstance(scope_name, str), f'{repr(scope_name)} not string.'
     assert len(type_bases) == 1, (
         f'{repr(type_bases)} not 1-tuple of a single superclass.')
 
@@ -260,29 +269,11 @@ def _make_forwardref_subtype(
     # Else, this attribute name is a syntactically valid Python identifier.
 
     # ....................{ LOCALS                         }....................
-    #FIXME: Refactor to render the parent
-    #canonicalize_hint_pep484_ref() getter more generically useful.
-    #Specifically:
-    #* Copy the logic below into the canonicalize_hint_pep484_ref() getter.
-    #* Refactor *ALL* "Optional[str]" type hints throughout both this subpackage
-    #  *AND* the companion "pep484ref" submodule to be "str" instead.
-    #* Validate above that "type_module_name" is a non-"None" string.
-    #* Remove the duplicated logic below.
-    #FIXME: Actually... is this harmless? Sure, it's inefficient. We get that.
-    #Duplication is bad, certainly. But it doesn't appear to be causing any
-    #genuine issues at the moment. *shrug*
-
     # Possibly empty fully-qualified module name and unqualified basename of the
-    # type referred to by this forward reference.
+    # unresolved hint referred to by this forward reference.
     type_module_name, _, type_name = hint_name.rpartition('.')
 
     # If this module name is empty, fallback to the passed module name if any.
-    #
-    # Note that we intentionally perform *NO* additional validation. Why?
-    # Builtin types. Notably, it is valid to pass an unqualified "hint_name"
-    # and a "scope_name" that is "None" only if "hint_name" is the name of a
-    # builtin type (e.g., "int", "str"). Since validating this edge case is
-    # non-trivial, we defer this validation to subsequent importation logic.
     if not type_module_name:
         type_module_name = scope_name
     # Else, this module name is non-empty.
