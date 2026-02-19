@@ -16,7 +16,7 @@ from beartype.roar._roarexc import (
     _BeartypeUtilCallableScopeNotFoundException,
 )
 from beartype._util.utilobject import get_object_basename_scoped
-from beartype._data.func.datafunccodeobj import FUNC_CODEOBJ_NAME_MODULE
+from beartype._data.func.datafunccodeobj import CODE_OBJECT_BASENAME_MODULE_OR_EVAL
 from beartype._data.typing.datatyping import (
     LexicalScope,
     TypeException,
@@ -266,7 +266,7 @@ def get_func_locals(
 
     # ..................{ IMPORTS                            }..................
     # Avoid circular import dependencies.
-    from beartype._util.func.utilfunccodeobj import get_func_codeobj
+    from beartype._util.func.utilfunccodeobj import get_func_code_object
     from beartype._util.func.utilfuncframe import (
         get_frame_locals,
         get_frame_module_name_or_none,
@@ -470,7 +470,7 @@ def get_func_locals(
         **kwargs
     ):
         # Code object underlying this frame's scope.
-        func_frame_codeobj = get_func_codeobj(func_frame)
+        func_frame_codeobj = get_func_code_object(func_frame)
 
         # Unqualified name of this scope.
         func_frame_name = func_frame_codeobj.co_name
@@ -491,7 +491,7 @@ def get_func_locals(
         # lexical scope of the parent declaring this nested callable. Why?
         # Because this scope *MUST* necessarily be in the same module as that of
         # this nested callable. In this case, raise an exception.
-        if func_frame_name == FUNC_CODEOBJ_NAME_MODULE:
+        if func_frame_name == CODE_OBJECT_BASENAME_MODULE_OR_EVAL:
             raise _BeartypeUtilCallableScopeNotFoundException(
                 f'{func_name_qualified}() parent lexical scope '
                 f'"{func_scope_name}" not found on call stack.'

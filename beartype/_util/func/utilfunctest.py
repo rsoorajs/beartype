@@ -38,7 +38,7 @@ from beartype._util.func.arg.utilfuncargtest import (
     is_func_arg_variadic_positional,
     is_func_arg_variadic_keyword,
 )
-from beartype._util.func.utilfunccodeobj import get_func_codeobj_or_none
+from beartype._util.func.utilfunccodeobj import get_func_code_object_or_none
 from collections.abc import Callable
 from inspect import (
     CO_ASYNC_GENERATOR,
@@ -458,7 +458,7 @@ def is_func_codeobjable(func: object) -> TypeIs[Callable]:
 
     # Return true only if a pure-Python code object underlies this object.
     # C-based callables are associated with *NO* code objects.
-    return get_func_codeobj_or_none(func) is not None
+    return get_func_code_object_or_none(func) is not None
 
 
 def is_func_lambda(func: object) -> TypeIs[Callable]:
@@ -714,7 +714,7 @@ def is_func_async(func: object) -> TypeIs[Callable]:
     # Note this tester intentionally:
     # * Inlines the tests performed by the is_func_coro() and
     #   is_func_async_generator() testers for efficiency.
-    # * Calls the get_func_codeobj_or_none() with "is_unwrap" disabled
+    # * Calls the get_func_code_object_or_none() with "is_unwrap" disabled
     #   rather than enabled. Why? Because the asynchronicity of this possibly
     #   higher-level wrapper has *NO* relation to that of the possibly
     #   lower-level wrappee wrapped by this wrapper. Notably, it is both
@@ -726,7 +726,7 @@ def is_func_async(func: object) -> TypeIs[Callable]:
     #     top-level "conftest.py" pytest plugin does exactly this -- enabling
     #     asynchronous tests to be safely called by pytest's currently
     #     synchronous framework.
-    func_codeobj = get_func_codeobj_or_none(func)
+    func_codeobj = get_func_code_object_or_none(func)
 
     # If this object is *NOT* a pure-Python callable, immediately return false.
     if func_codeobj is None:
@@ -771,7 +771,7 @@ def is_func_coro(func: object) -> TypeIs[Callable]:
     '''
 
     # Code object underlying this pure-Python callable if any *OR* "None".
-    func_codeobj = get_func_codeobj_or_none(func)
+    func_codeobj = get_func_code_object_or_none(func)
 
     # Return true only if...
     return (
@@ -809,7 +809,7 @@ def is_func_async_generator(func: object) -> TypeIs[Callable]:
     '''
 
     # Code object underlying this pure-Python callable if any *OR* "None".
-    func_codeobj = get_func_codeobj_or_none(func)
+    func_codeobj = get_func_code_object_or_none(func)
 
     # Return true only if...
     return (
@@ -870,7 +870,7 @@ def is_func_sync_generator(func: object) -> TypeIs[Callable]:
     # this object is *NOT* a synchronous generator object.
 
     # Code object underlying this pure-Python callable if any *OR* "None".
-    func_codeobj = get_func_codeobj_or_none(func)
+    func_codeobj = get_func_code_object_or_none(func)
 
     # Return true only if...
     return (
@@ -1191,7 +1191,7 @@ def is_func_wrapper_isomorphic(
     # Code object underlying that callable as is (rather than possibly unwrapped
     # to another code object entirely) if that callable is pure-Python *OR*
     # "None" otherwise (i.e., if that callable is C-based).
-    func_codeobj = get_func_codeobj_or_none(func)
+    func_codeobj = get_func_code_object_or_none(func)
 
     # If that callable is C-based...
     if not func_codeobj:  # pragma: no cover

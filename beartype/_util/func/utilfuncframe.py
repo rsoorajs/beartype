@@ -14,7 +14,14 @@ This private submodule is *not* intended for importation by downstream callers.
 # ....................{ IMPORTS                            }....................
 import sys
 from beartype.roar._roarexc import _BeartypeUtilCallFrameException
-from beartype._cave._cavefast import CallableFrameType
+from beartype._cave._cavefast import (
+    CallableCodeObjectType,
+    CallableFrameType,
+)
+from beartype._data.func.datafunccodeobj import (
+    CODE_OBJECT_BASENAME_MODULE_OR_EVAL,
+    CODE_OBJECT_FILENAME_EVAL,
+)
 from beartype._data.typing.datatyping import (
     LexicalScope,
     MappingStrToAny,
@@ -29,68 +36,120 @@ from typing import Optional
 
 # ....................{ TESTERS                            }....................
 #FIXME: Unit test us up, please.
-def is_frame_caller_beartype(
+def is_frame_beartype(
+    # Mandatory parameters.
+    frame: CallableFrameType,
+
     # Optional parameters.
-    ignore_frames: int = 1,
-    is_beartype_test: bool = False,
-    exception_cls: TypeException = _BeartypeUtilCallFrameException,
+    is_beartype_test_beartype: bool = False,
 ) -> bool:
     '''
-    :data:`True` only if the **caller** (i.e., callable directly calling this
-    getter) resides inside the :mod:`beartype` codebase.
-
-    This tester implicitly ignores the current call to this getter by
-    unconditionally adding ``1`` to the passed number of stack frames.
+    :data:`True` only if the **lexical scope** (e.g., module, type, callable)
+    executing the passed **stack frame** (i.e., :class:`.CallableFrameType`
+    instance encapsulating all metadata describing a single call on the current
+    call stack) resides *inside* the **main beartype codebase** (i.e.,
+    :mod:`beartype` package).
 
     Parameters
     ----------
-    ignore_frames : int, optional
-        Number of stack frames on the current call stack to ignore (excluding
-        the stack frame encapsulating the call to this getter). Defaults to 1,
-        signifying the stack frame of the **caller** directly calling this
-        getter.
-    is_beartype_test : bool, default: False
-        :data:`True` only if this tester additionally returns :data:`True` when
-        the caller resides inside the related :mod:`beartype_test` codebase.
-        Defaults to :data:`False`; thus, this tester returns :data:`False` when
-        the caller resides inside the related :mod:`beartype_test` codebase by
-        default and treats :mod:`beartype_test` as an external third-party.
-    exception_cls : TypeException, default: _BeartypeUtilCallFrameException
-        Type of exception to be raised in the event of a fatal error. Defaults
-        to :class:`._BeartypeUtilCallFrameException`.
+    frame : CallableFrameType
+        Stack frame to be inspected.
+    is_beartype_test_beartype : bool, default: False
+        data:`True` only if treating the :mod:`beartype` and
+        :mod:`beartype_test` packages as semantically equivalent. Specifically,
+        either:
+
+        * If :data:`False`, this tester treats the **beartype test suite**
+          (i.e., :mod:`beartype_test` package) as an external third party. If
+          the caller resides inside the related :mod:`beartype_test` codebase,
+          this tester returns :data:`False`.
+        * If :data:`True`, this tester treats our test suite as semantically
+          equivalent to the main :mod:`beartype` codebase. If the caller resides
+          inside the related :mod:`beartype_test` codebase, this tester returns
+          :data:`True`.
+
+        Defaults to :data:`False`.
 
     Returns
     -------
     bool
-        :data:`True` only if the caller is in the :mod:`beartype` codebase.
+        :data:`True` only if this frame executes the :mod:`beartype` codebase.
     '''
-    assert isinstance(ignore_frames, int), f'{repr(ignore_frames)} not integer.'
-    assert isinstance(is_beartype_test, bool), (
-        f'{repr(is_beartype_test)} not bool.')
+    assert isinstance(frame, CallableFrameType), (
+        f'{repr(frame)} not stack frame.')
+    assert isinstance(is_beartype_test_beartype, bool), (
+        f'{repr(is_beartype_test_beartype)} not bool.')
 
-    # Fully-qualified name of the (sub)module declaring the caller (i.e.,
-    # callable directly calling this dunder method) if that callable has a
-    # (sub)module *or* "None" otherwise (e.g., if that callable resides outside
-    # a module, usually due to being declared in an interactive REPL).
-    frame_caller_module_name = get_frame_caller_module_name_or_none(
-        ignore_frames=ignore_frames + 1, exception_cls=exception_cls)
+    # Fully-qualified name of the module defining the scope executing this frame
+    # if that scope resides in a module *OR* "None" (e.g., if that scope was
+    # dynamically defined outside any module structure).
+    frame_caller_module_name = get_frame_module_name_or_none(frame)
 
-    # Return true only if
+    # Return true only if...
     return (
-        # The caller resides inside a module structure *AND*...
+        # That scope resides inside a module structure *AND*...
         frame_caller_module_name is not None and
         # Either...
         (
-            # The caller resides inside the "beartype" package *OR*...
+            # That scope resides inside the "beartype" package *OR*...
             frame_caller_module_name.startswith('beartype.') or
             (
                 # The caller requests that the "beartype_test" package be
                 # conflated with the "beartype" package *AND*...
-                is_beartype_test and
-                # The caller resides inside the "beartype_test" package...
+                is_beartype_test_beartype and
+                # That scope resides inside the "beartype_test" package...
                 frame_caller_module_name.startswith('beartype_test.')
             )
         )
+    )
+
+
+#FIXME: Unit test us up, please.
+def is_frame_eval(frame: CallableFrameType) -> bool:
+    '''
+    :data:`True` only if passed **stack frame** (i.e.,
+    :class:`.CallableFrameType` instance encapsulating all metadata describing a
+    single call on the current call stack) encapsulates a call to either of the
+    :func:`eval` or :func:`exec` builtins dynamically executing a pure-Python
+    code snippet.
+
+    Parameters
+    ----------
+    frame : CallableFrameType
+        Stack frame to be inspected.
+
+    Returns
+    -------
+    bool
+        :data:`True` only if this frame is a :func:`eval` or :func:`exec` call.
+    '''
+    assert isinstance(frame, CallableFrameType), (
+        f'{repr(frame)} not stack frame.')
+
+    # Avoid circular import dependencies.
+    from beartype._util.func.utilfunccodeobj import (
+        get_code_object_basename,
+        get_code_object_filename,
+    )
+
+    # Code object underlying the pure-Python scope executing this frame if that
+    # scope is pure-Python *OR* "None" (e.g., if that scope is C-based).
+    frame_codeobj = get_frame_code_object_or_none(frame)
+
+    #FIXME: Can we do better? Although useful, these ad-hoc heuristics are still
+    #too permissively unconstrained. They're likely to return false positives
+    #for scopes that are *NOT* eval() or exec() calls. No idea, honestly. *sigh*
+    # Return true only if...
+    return (
+        # That scope is pure-Python *AND*...
+        frame_codeobj is not None and
+        # The unqualified basename of this code object is that of all code
+        # objects underlying all eval() or exec() calls *AND*...
+        get_code_object_basename(frame_codeobj) == (
+            CODE_OBJECT_BASENAME_MODULE_OR_EVAL) and
+        # The absolute filename of this code object is that of all code objects
+        # underlying all eval() or exec() calls.
+        get_code_object_filename(frame_codeobj) == CODE_OBJECT_FILENAME_EVAL
     )
 
 # ....................{ GETTERS                            }....................
@@ -259,7 +318,34 @@ ValueError
     of the current call stack.
 '''
 
-# ....................{ GETTERS ~ attr                     }....................
+# ....................{ GETTERS ~ attribute                }....................
+#FIXME: Unit test up, please. *sigh*
+def get_frame_code_object_or_none(
+    frame: CallableFrameType) -> Optional[CallableCodeObjectType]:
+    '''
+    C-based code object underlying the **pure-Python lexical scope** (i.e.,
+    module, type, callable) executing the passed **stack frame** (i.e.,
+    :class:`.CallableFrameType` instance encapsulating all metadata describing a
+    single call on the current call stack) if that scope is pure-Python *or*
+    :data:`None` otherwise (e.g., if that scope is C-based).
+
+    Parameters
+    ----------
+    frame : CallableFrameType
+        Stack frame to be inspected.
+
+    Returns
+    -------
+    CallableCodeObjectType
+        Code object underlying this stack frame.
+    '''
+    assert isinstance(frame, CallableFrameType), (
+        f'{repr(frame)} not stack frame.')
+
+    # Trivially return this stack frame's code object if any *OR* "None".
+    return frame.f_code
+
+# ....................{ GETTERS ~ attribute : scope        }....................
 #FIXME: Unit test up, please. *sigh*
 def get_frame_globals(frame: CallableFrameType) -> LexicalScope:
     '''
@@ -347,7 +433,7 @@ def get_frame_package_name_or_none(frame: CallableFrameType) -> Optional[str]:
 
     See Also
     --------
-    :func:`beartype._util.func.utilfunccodeobj.get_func_codeobj_basename`
+    :func:`beartype._util.func.utilfunccodeobj.get_func_code_object_basename`
         Related getter getting the unqualified basename of that callable.
     '''
     assert isinstance(frame, CallableFrameType), (
@@ -371,10 +457,10 @@ def get_frame_caller_module_name_or_none(
     exception_cls: TypeException = _BeartypeUtilCallFrameException,
 ) -> Optional[str]:
     '''
-    Fully-qualified name of the (sub)module declaring the **caller** (i.e.,
-    callable directly calling this getter) if that callable has a (sub)module
-    *or* :data:`None` (e.g., if that callable resides outside any module
-    structure, typically due to being declared directly in an interactive REPL).
+    Fully-qualified name of the module executing the **caller** (i.e., lexical
+    scope directly calling this getter) if the caller resides in a module *or*
+    :data:`None` otherwise (e.g., if the caller was dynamically defined outside
+    any module structure).
 
     This getter implicitly ignores the current call to this getter by
     unconditionally adding ``1`` to the passed number of stack frames.
@@ -401,7 +487,7 @@ def get_frame_caller_module_name_or_none(
 
     See Also
     --------
-    :func:`beartype._util.func.utilfunccodeobj.get_func_codeobj_basename`
+    :func:`beartype._util.func.utilfunccodeobj.get_func_code_object_basename`
         Related getter getting the unqualified basename of that callable.
     '''
 
@@ -427,13 +513,11 @@ def get_frame_caller_module_name_or_none(
 #FIXME: Unit test us up, please.
 def get_frame_module_name_or_none(frame: CallableFrameType) -> Optional[str]:
     '''
-    Fully-qualified name of the (sub)module declaring the callable whose code
-    object is that of the passed **stack frame** (i.e.,
-    :class:`.CallableFrameType` instance encapsulating all metadata describing a
-    single call on the current call stack) if that callable has a (sub)module
-    *or* :data:`None` otherwise (e.g., if that callable resides outside any
-    module structure, typically due to being declared directly in an interactive
-    REPL).
+    Fully-qualified name of the module containing the lexical scope executing
+    the passed **stack frame** (i.e., :class:`.CallableFrameType` instance
+    encapsulating all metadata describing a single call on the current call
+    stack) if that scope resides in a module *or* :data:`None` otherwise (e.g.,
+    if that scope was dynamically defined outside any module structure).
 
     Parameters
     ----------
@@ -453,7 +537,7 @@ def get_frame_module_name_or_none(frame: CallableFrameType) -> Optional[str]:
 
     See Also
     --------
-    :func:`beartype._util.func.utilfunccodeobj.get_func_codeobj_basename`
+    :func:`beartype._util.func.utilfunccodeobj.get_func_code_object_basename`
         Related getter getting the unqualified basename of that callable.
     '''
     assert isinstance(frame, CallableFrameType), (
@@ -468,7 +552,7 @@ def get_frame_module_name_or_none(frame: CallableFrameType) -> Optional[str]:
 
 
 #FIXME: Preserved for posterity. Currently unused, but potentially useful.
-# from beartype._data.func.datafunccodeobj import FUNC_CODEOBJ_NAME_MODULE
+# from beartype._data.func.datafunccodeobj import CODE_OBJECT_BASENAME_MODULE_OR_EVAL
 # #FIXME: Unit test us up, please.
 # def get_frame_name(
 #     # Mandatory parameters.
@@ -495,7 +579,7 @@ def get_frame_module_name_or_none(frame: CallableFrameType) -> Optional[str]:
 #     '''
 #
 #     # Avoid circular import dependencies.
-#     from beartype._util.func.utilfunccodeobj import get_func_codeobj_basename
+#     from beartype._util.func.utilfunccodeobj import get_func_code_object_basename
 #
 #     # Fully-qualified name of the module declaring the callable described by
 #     # this frame.
@@ -503,7 +587,7 @@ def get_frame_module_name_or_none(frame: CallableFrameType) -> Optional[str]:
 #         frame=frame, exception_cls=exception_cls)
 #
 #     # Unqualified basename of that callable.
-#     frame_basename = get_func_codeobj_basename(
+#     frame_basename = get_func_code_object_basename(
 #         func=frame, exception_cls=exception_cls)
 #
 #     # Possibly fully-qualified name of that callable, defined as either...
@@ -512,7 +596,7 @@ def get_frame_module_name_or_none(frame: CallableFrameType) -> Optional[str]:
 #         # top-level lexical scope of a module, omit the prefixing module name
 #         # (which is, in any case, the meaningless magic string "<module>");
 #         frame_basename
-#         if frame_module_name == FUNC_CODEOBJ_NAME_MODULE else
+#         if frame_module_name == CODE_OBJECT_BASENAME_MODULE_OR_EVAL else
 #         # Else, that callable is actually a callable. In this case, prefix the
 #         # unqualified basename of that callable by the fully-qualified name of
 #         # the module declaring that callable.
@@ -739,7 +823,7 @@ def iter_frames(
     :: code-block:: python
 
        from beartype._util.func.utilfunccodeobj import (
-           get_func_codeobj_or_none)
+           get_func_code_object_or_none)
        from beartype._util.func.utilfuncframe import iter_frames
 
        # For each pure-Python stack frame on the call stack...
@@ -747,7 +831,7 @@ def iter_frames(
            # Fully-qualified name of this scope's module.
            func_frame_module_name = func_frame.f_globals['__name__']
 
-           # Unqualified name of this scope.
+           # Unqualified basename of this scope.
            func_frame_name = func_frame_codeobj.co_name
 
            # Print the fully-qualified name of this scope.
@@ -764,7 +848,7 @@ def iter_frames(
 
     # ..................{ IMPORTS                            }..................
     # Avoid circular import dependencies.
-    from beartype._util.func.utilfunccodeobj import get_func_codeobj_or_none
+    from beartype._util.func.utilfunccodeobj import get_func_code_object_or_none
 
     # ....................{ PREAMBLE                       }....................
     # If the active Python interpreter fails to declare the private
@@ -802,7 +886,7 @@ def iter_frames(
 
         # Code object underlying this frame's scope if this scope is pure-Python
         # *OR* "None" otherwise.
-        func_frame_codeobj = get_func_codeobj_or_none(func_frame)
+        func_frame_codeobj = get_func_code_object_or_none(func_frame)
 
         # Fully-qualified name of the module defining this scope if any *OR*
         # "None" otherwise (i.e., if this scope is defined outside a module).

@@ -22,7 +22,7 @@ from beartype._data.typing.datatyping import (
     Codeobjable,
     TypeException,
 )
-from beartype._util.func.utilfunccodeobj import get_func_codeobj
+from beartype._util.func.utilfunccodeobj import get_func_code_object
 from inspect import (
     CO_VARARGS,
     CO_VARKEYWORDS,
@@ -115,7 +115,7 @@ def get_func_args_len(*args, **kwargs) -> int:
     Parameters
     ----------
     All parameters are passed as is to the lower-level
-    :func:`.get_func_codeobj` getter.
+    :func:`.get_func_code_object` getter.
 
     Returns
     -------
@@ -179,7 +179,7 @@ def get_func_args_lens(
     is_unwrap: bool, optional
         :data:`True` only if this getter implicitly calls the
         :func:`beartype._util.func.utilfuncwrap.unwrap_func_all` function.
-        Defaults to :data:`True` for safety. See :func:`.get_func_codeobj` for
+        Defaults to :data:`True` for safety. See :func:`.get_func_code_object` for
         further commentary.
     exception_cls : type, optional
         Type of exception to be raised in the event of a fatal error. Defaults
@@ -222,7 +222,7 @@ def get_func_args_lens(
     # Else, this metadata has *NOT* been previously computed.
 
     # Code object underlying the passed pure-Python callable unwrapped.
-    func_codeobj = get_func_codeobj(
+    func_codeobj = get_func_code_object(
         func=func,
         is_unwrap=False,  # <-- "func" was already unwrapped above. I sigh.
         exception_cls=exception_cls,
@@ -317,7 +317,7 @@ def get_func_args_flexible_len(
     is_unwrap: bool, optional
         :data:`True` only if this getter implicitly calls the
         :func:`beartype._util.func.utilfuncwrap.unwrap_func_all` function.
-        Defaults to :data:`True` for safety. See :func:`.get_func_codeobj` for
+        Defaults to :data:`True` for safety. See :func:`.get_func_code_object` for
         further commentary.
     exception_cls : type, optional
         Type of exception to be raised in the event of a fatal error. Defaults
@@ -421,7 +421,7 @@ def get_func_args_nonvariadic_len(*args, **kwargs) -> int:
     Parameters
     ----------
     All parameters are passed as is to the lower-level
-    :func:`.get_func_codeobj` getter.
+    :func:`.get_func_code_object` getter.
 
     Returns
     -------
@@ -474,7 +474,7 @@ def _get_func_boundmethod_args_flexible_len(
     is_unwrap: bool, optional
         :data:`True` only if this getter implicitly calls the
         :func:`beartype._util.func.utilfuncwrap.unwrap_func_all` function.
-        Defaults to :data:`True` for safety. See :func:`.get_func_codeobj` for
+        Defaults to :data:`True` for safety. See :func:`.get_func_code_object` for
         further commentary.
     exception_cls : type, optional
         Type of exception to be raised in the event of a fatal error. Defaults

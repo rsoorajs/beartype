@@ -13,10 +13,6 @@ This private submodule is *not* intended for importation by downstream callers.
 
 # ....................{ IMPORTS                            }....................
 from beartype.roar._roarexc import _BeartypeUtilCallableException
-from beartype.typing import (
-    Any,
-    Optional,
-)
 from beartype._cave._cavefast import (
     CallableCodeObjectType,
     CallableFrameType,
@@ -28,9 +24,13 @@ from beartype._data.typing.datatyping import (
     TypeException,
 )
 from beartype._util.py.utilpyversion import IS_PYTHON_AT_LEAST_3_11
+from typing import (
+    Any,
+    Optional,
+)
 
 # ....................{ GETTERS                            }....................
-def get_func_codeobj(
+def get_func_code_object(
     # Mandatory parameters.
     func: Codeobjable,
 
@@ -111,7 +111,7 @@ def get_func_codeobj(
 
     # Code object underlying this callable if this callable is pure-Python *OR*
     # "None" otherwise.
-    func_codeobj = get_func_codeobj_or_none(func=func, is_unwrap=is_unwrap)
+    func_codeobj = get_func_code_object_or_none(func=func, is_unwrap=is_unwrap)
 
     # If this callable is *NOT* pure-Python...
     if func_codeobj is None:
@@ -130,7 +130,7 @@ def get_func_codeobj(
     return func_codeobj  # type: ignore[return-value]
 
 
-def get_func_codeobj_or_none(
+def get_func_code_object_or_none(
     # Mandatory parameters.
     #
     # Note that the "func" parameter is intentionally annotated as "Any" rather
@@ -193,7 +193,7 @@ def get_func_codeobj_or_none(
 
     See Also
     --------
-    :func:`.get_func_codeobj`
+    :func:`.get_func_code_object`
         Further details.
     '''
     assert isinstance(is_unwrap, bool), f'{is_unwrap} not boolean.'
@@ -266,47 +266,84 @@ def get_func_codeobj_or_none(
     # Return this code object.
     return func_codeobj
 
-# ....................{ GETTERS                            }....................
-#FIXME: Unit test us up, please.
-def get_func_codeobj_basename(func: Codeobjable, **kwargs) -> str:
+# ....................{ GETTERS ~ attribute                }....................
+#FIXME: Unit test us up, please. *sigh*
+def get_code_object_basename(code_object: CallableCodeObjectType) -> str:
     '''
-    Unqualified basename (contextually depending on the version of the active
-    Python interpreter) of the passed **codeobjable** (i.e., pure-Python object
-    directly associated with a code object) if this object is codeobjable *or*
-    raise an exception otherwise (e.g., if this object is *not* codeobjable).
+    Unqualified basename of the **physical lexical scope** (i.e., module, class,
+    callable) of the passed code object if that object is executed inside a
+    scope that physically exists *or* the string constant
+    :data:`beartype._data.func.datafunccodeobj.CODE_OBJECT_BASENAME_MODULE_OR_EVAL`
+    if that code object is executed dynamically in-memory outside such a scope.
 
     Specifically, this getter returns:
 
     * If the active Python interpreter targets Python >= 3.11, the value of the
-      the ``co_qualname`` attribute on this code object.
-    * Else, the value of the ``co_name`` attribute on this code object.
+      ``co_qualname`` attribute defined on this code object.
+    * Else, the value of the ``co_name`` attribute defined on this code object.
 
     Parameters
     ----------
-    func : Codeobjable
-        Codeobjable to be inspected.
+    code_object : CallableCodeObjectType
+        Code object to introspect the absolute filename of.
 
-    All remaining keyword parameters are passed as is to the
-    :func:`.get_func_codeobj` getter.
-
-    Raises
-    ------
-    exception_cls
+    Returns
+    -------
+    str
          If this codeobjable has *no* code object and is thus *not* pure-Python.
     '''
-
-    # Code object underlying this codeobjable if pure-Python *OR* raise an
-    # exception otherwise (i.e., if this codeobjable is C-based).
-    func_codeobj = get_func_codeobj(func, **kwargs)
+    assert isinstance(code_object, CallableCodeObjectType), (
+        f'{repr(code_object)} not code object.')
 
     # Return either...
     return (
         # If the active Python interpreter targets Python >= 3.11 and thus
         # defines the "co_qualname" attribute on code objects, that attribute;
-        func_codeobj.co_qualname  # type: ignore[attr-defined]
+        code_object.co_qualname  # type: ignore[attr-defined]
         if IS_PYTHON_AT_LEAST_3_11 else
         # Else, the active Python interpreter targets Python < 3.11 and thus
         # does *NOT* defines the "co_qualname" attribute on code objects. In
         # this case, the "co_name" attribute instead.
-        func_codeobj.co_name
+        code_object.co_name
     )
+
+
+#FIXME: Unit test us up, please. *sigh*
+def get_code_object_filename(
+    code_object: CallableCodeObjectType) -> Optional[str]:
+    '''
+    Absolute filename of the pure-Python source code file physically defining
+    the **lexical scope** (i.e., module, class, callable) executed by the passed
+    code object if that object is executed by such a file, the string constant
+    :data:`beartype._data.func.datafunccodeobj.CODE_OBJECT_FILENAME_EVAL` if
+    that code object is executed dynamically in-memory outside such a file, *or*
+    :data:`None` otherwise (e.g., if that code object fails to even define the
+    ``co_filename`` instance variable, as can occur under third-party Python
+    interpreters like PyPy).
+
+    Parameters
+    ----------
+    code_object : CallableCodeObjectType
+        Code object to introspect the absolute filename of.
+
+    Returns
+    -------
+    Optional[str]
+        Either:
+
+        * If this code object defines the ``co_filename`` instance variable, the
+          value of that variable.
+        * Else, :data:`None`.
+    '''
+    assert isinstance(code_object, CallableCodeObjectType), (
+        f'{repr(code_object)} not code object.')
+
+    # Absolute filename of the pure-Python source code file defining that
+    # callable if this code object offers that metadata *OR* "None" otherwise.
+    #
+    # Note that we intentionally do *NOT* assume all code objects to offer this
+    # metadata (e.g., by unconditionally returning "func_codeobj.co_filename").
+    # Why? Because PyPy yet again. For inexplicable reasons, PyPy provides
+    # *ALL* C-based builtins (e.g., len()) with code objects failing to provide
+    # this metadata. Yes, this is awful. Yes, this is the Python ecosystem.
+    return getattr(code_object, 'co_filename', None)

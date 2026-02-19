@@ -46,9 +46,11 @@ from beartype._data.typing.datatyping import (
 )
 from beartype._data.typing.datatypingport import Hint
 from beartype._util.func.utilfuncframe import (
+    get_frame_or_none,
     get_frame_caller_module_name_or_none,
-    is_frame_caller_beartype,
-    iter_frames,
+    is_frame_beartype,
+    is_frame_eval,
+    # iter_frames,
 )
 from beartype._util.kind.maplike.utilmapset import (
     remove_mapping_keys_except)
@@ -415,34 +417,51 @@ class BeartypeForwardScope(LexicalScope):
         # print(f'is beartype 1? {is_frame_caller_beartype(ignore_frames=1)}')
         # print(f'is beartype 2? {is_frame_caller_beartype(ignore_frames=2)}')
 
-        # If it is *NOT* the case that...
-        if not (  # pragma: no cover
-            # The caller directly resides inside the "beartype" package *OR*...
+        # Stack frame of the caller directly calling this dunder method if this
+        # method is called by a caller *OR* "None" otherwise (e.g., if this
+        # method is called from an interactive REPL). Intentionally ignore the
+        # call to the parent BeartypeForwardScope.__getitem__() dunder method,
+        # which is *GUARANTEED* to be the only parent method of this child
+        # method and thus safely ignorable.
+        #
+        # Note that, with respect to the body of the get_frame_or_none() getter:
+        # * The 0-th stack frame is the call to that getter performed here.
+        # * The 1-st stack frame is the call to this __missing__() method.
+        # * The 2-nd stack frame is the call to the parent __getitem__() method.
+        # * The 3-rd stack frame is the scope responsible for calling that
+        #   parent __getitem__() method.
+        #
+        # Ergo, ignoring the first three stack frames on the current call stack
+        # by passing "ignore_frames=2" yields the expected parent parent caller.
+        frame_caller = get_frame_or_none(ignore_frames=2)
+
+        # If either...
+        if (
+            # *NO* caller directly called this dunder method (in which case this
+            # method was probably called from an interactive REPL) *OR*...
             #
-            # Note that passing "ignore_frames=1" would simply ignore the parent
-            # BeartypeForwardScope.__getitem__() dunder method. Since that
-            # method is *GUARANTEED* to be the only parent method of this child
-            # method, passing "ignore_frames=1" is useless.
-            is_frame_caller_beartype(ignore_frames=2) or
-            # The caller indirectly resides inside the "beartype" package. This
-            # common edge cases arises when the parent
-            # _resolve_hint_pep484_ref_str() function calls the eval() builtin
-            # to dynamically evaluate the passed stringified type hint: e.g.,
-            #     # This is the eval() call triggering this call.
-            #     hint_resolved = eval(hint, scope_forward)
-            #
-            # In this case, the prior call to the is_frame_caller_beartype()
-            # tester tested the stack frame of that eval() call and,
-            # specifically, the "__name__" attribute of the global namespace of
-            # the external user-defined module proxied by this forward scope.
-            # Naturally, that module is external and thus *NOT* inside the
-            # "beartype" package. Ignore this stack frame in the hopes that the
-            # parent stack frame of that eval() call will be the
-            # "beartype._check.forward.fwdresolve" submodule performing that
-            # call. Look. We don't like this fragility any more than you do, but
-            # Python shenanigans leave us little choice. Our paws are tied!
-            is_frame_caller_beartype(ignore_frames=3)
-        ):
+            # The caller that directly called this dunder method is neither...
+            frame_caller is None or not (
+                # A beartype module, type, or callable *NOR*...
+                is_frame_beartype(frame_caller) or
+                # A call to the eval() or exec() builtin.
+                #
+                # Note that calls to the eval() or exec() builtin that originate
+                # from within the beartype codebase are difficult to distinguish
+                # from calls to the eval() or exec() builtin that originate from
+                # outside the beartype codebase. Technically, doing is is
+                # feasible (e.g., by introspecting the caller of the caller if
+                # this caller is a call to the eval() or exec() builtin).
+                # Pragmatically, doing so would only needlessly consume scarce
+                # space and time for no particularly good reason. Why? Because
+                # this common edge cases arises when the parent
+                # _resolve_hint_pep484_ref_str() function calls the eval()
+                # builtin to dynamically evaluate the passed PEP 484-compliant
+                # stringified forward reference type hint: e.g.,
+                #     # This is the eval() call triggering this call.
+                #     hint_resolved = eval(hint, scope_forward)
+                is_frame_eval(frame_caller)
+            )
             # Then the caller is a third-party. In this case, assume this
             # erroneous attempt to access a non-existent attribute of this scope
             # to *ACTUALLY* be an Easier to Ask for Permission than Forgiveness
@@ -450,7 +469,7 @@ class BeartypeForwardScope(LexicalScope):
             # this attribute ala the hasattr() builtin. In this case, raise the
             # standard "KeyError" exception expected by callers. See also the
             # "Caveats" subsection of the docstring for commentary.
-
+        ):
             # print(f'caller+1: {get_frame_caller_module_name_or_none(ignore_frames=1)}')
             # print(f'caller+2: {get_frame_caller_module_name_or_none(ignore_frames=2)}')
             # print(f'caller+3: {get_frame_caller_module_name_or_none(ignore_frames=3)}')
@@ -463,7 +482,8 @@ class BeartypeForwardScope(LexicalScope):
 
             # Fully-qualified name of the module declaring the caller if any
             # *OR* "None" otherwise (e.g., if declared in an interactive REPL).
-            frame_caller_module_name = get_frame_caller_module_name_or_none()
+            frame_caller_module_name = get_frame_caller_module_name_or_none(
+                ignore_frames=2)
 
             # If the caller has a module, append the fully-qualified name of
             # that module to this exception message to improve debuggability.

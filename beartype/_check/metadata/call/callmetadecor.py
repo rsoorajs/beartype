@@ -42,8 +42,8 @@ from beartype._util.cache.pool.utilcachepoolinstance import (
     release_instance,
 )
 from beartype._util.func.utilfunccodeobj import (
-    get_func_codeobj,
-    get_func_codeobj_or_none,
+    get_func_code_object,
+    get_func_code_object_or_none,
 )
 from beartype._util.func.utilfunctest import (
     is_func_coro,
@@ -156,7 +156,7 @@ class BeartypeCallDecorMeta(BeartypeCallDecorMinimalMeta):
         currently being decorated by the :func:`beartype.beartype` decorator).
         For efficiency, this code object should *always* be accessed in lieu of
         inefficiently calling the comparatively slower
-        :func:`beartype._util.func.utilfunccodeobj.get_func_codeobj` getter.
+        :func:`beartype._util.func.utilfunccodeobj.get_func_code_object` getter.
     func_wrapper : Callable
         **Wrapper callable** to be unwrapped in the event that the
         :attr:`func_wrappee` differs from the callable to be unwrapped.
@@ -466,7 +466,7 @@ class BeartypeCallDecorMeta(BeartypeCallDecorMinimalMeta):
         # (i.e., "func_wrappee_wrappee") *MUST* be pure-Python and thus *MUST*
         # have a code object. This higher-level wrappee is permitted to be
         # C-based and thus need *NOT* have a code object.
-        func_wrappee_codeobj = get_func_codeobj_or_none(func)
+        func_wrappee_codeobj = get_func_code_object_or_none(func)
 
         # ..................{ VARS ~ func : wrappee wrappee  }..................
         # Possibly unwrapped callable unwrapped from this wrappee callable.
@@ -487,7 +487,7 @@ class BeartypeCallDecorMeta(BeartypeCallDecorMinimalMeta):
         # print(f'{dir(self.func_wrappee_wrappee)}')
 
         # Possibly unwrapped callable code object.
-        self.func_wrappee_wrappee_codeobj = get_func_codeobj(
+        self.func_wrappee_wrappee_codeobj = get_func_code_object(
             func=self.func_wrappee_wrappee,
             exception_cls=BeartypeDecorWrappeeException,
         )

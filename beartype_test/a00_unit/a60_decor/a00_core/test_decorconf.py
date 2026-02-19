@@ -92,7 +92,14 @@ def test_decor_conf_is_debug(capsys) -> None:
 
     # ..................{ IMPORTS                            }..................
     # Defer test-specific imports.
-    from beartype import BeartypeConf, beartype
+    from beartype import (
+        BeartypeConf,
+        beartype,
+    )
+    from beartype._util.func.utilfunccodeobj import (
+        get_func_code_object,
+        get_code_object_filename,
+    )
     from linecache import cache as linecache_cache
 
     # ..................{ LOCALS                             }..................
@@ -125,9 +132,11 @@ def test_decor_conf_is_debug(capsys) -> None:
     # We can relax this later to avoid making those line-by-line comparisons and
     # just check for the decorated function's filename's presence in the cache.
 
+    #FIXME: Just call get_func_filename_or_none() instead. *shrug*
     # Absolute filename of the fake file declaring the earthquake_beartyped()
     # function.
-    earthquake_beartyped_filename = earthquake_beartyped.__code__.co_filename
+    earthquake_beartyped_filename = (
+        get_code_object_filename(get_func_code_object(earthquake_beartyped)))
 
     # Assert that the standard "linecache" module cached metadata describing the
     # earthquake_beartyped() function.

@@ -15,7 +15,10 @@ from beartype.typing import (
     AsyncIterator,
     Iterator,
 )
-from beartype._util.func.utilfunccodeobj import get_func_codeobj_basename
+from beartype._util.func.utilfunccodeobj import (
+    get_func_code_object,
+    get_code_object_basename,
+)
 from contextlib import (
     asynccontextmanager,
     contextmanager,
@@ -43,8 +46,8 @@ def _noop_context_manager_sync() -> Iterator[None]:
     yield
 
 
-CONTEXTLIB_ASYNCCONTEXTMANAGER_CODEOBJ_NAME = get_func_codeobj_basename(
-    _noop_context_manager_async)
+CONTEXTLIB_ASYNCCONTEXTMANAGER_CODEOBJ_NAME = (
+    get_code_object_basename(get_func_code_object(_noop_context_manager_async)))
 '''
 Fully-qualified name of the code object underlying the isomorphic decorator
 closure created and returned by the :func:`contextlib.asynccontextmanager`
@@ -57,8 +60,8 @@ See Also
 '''
 
 
-CONTEXTLIB_CONTEXTMANAGER_CODEOBJ_NAME = get_func_codeobj_basename(
-    _noop_context_manager_sync)
+CONTEXTLIB_CONTEXTMANAGER_CODEOBJ_NAME = (
+    get_code_object_basename(get_func_code_object(_noop_context_manager_sync)))
 '''
 Fully-qualified name of the code object underlying the isomorphic decorator
 closure created and returned by the :func:`contextlib.contextmanager` decorator.

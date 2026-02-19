@@ -26,7 +26,7 @@ from beartype._util.func.arg.utilfuncargiter import (
     iter_func_args,
 )
 from beartype._util.func.arg.utilfuncarglen import get_func_args_len
-from beartype._util.func.utilfunccodeobj import get_func_codeobj
+from beartype._util.func.utilfunccodeobj import get_func_code_object
 
 # ....................{ GETTERS ~ meta                     }....................
 #FIXME: [SPEED] Consider refactoring this O(n) iteration into an O(1) lookup.
@@ -63,7 +63,7 @@ def get_func_arg_meta_variadic_positional_or_none(
     Parameters
     ----------
     All remaining parameters are passed as is to the lower-level
-    :func:`beartype._util.func.utilfunccodeobj.get_func_codeobj` getter.
+    :func:`beartype._util.func.utilfunccodeobj.get_func_code_object` getter.
 
     Returns
     -------
@@ -130,7 +130,7 @@ def get_func_arg_meta_variadic_keyword_or_none(
     Parameters
     ----------
     All remaining parameters are passed as is to the lower-level
-    :func:`beartype._util.func.utilfunccodeobj.get_func_codeobj` getter.
+    :func:`beartype._util.func.utilfunccodeobj.get_func_code_object` getter.
 
     Returns
     -------
@@ -298,7 +298,7 @@ def get_func_arg_names(
     is_unwrap: bool, optional
         :data:`True` only if this getter implicitly calls the
         :func:`beartype._util.func.utilfuncwrap.unwrap_func_all` function.
-        Defaults to :data:`True` for safety. See :func:`.get_func_codeobj` for
+        Defaults to :data:`True` for safety. See :func:`.get_func_code_object` for
         further commentary.
     exception_cls : type, default: _BeartypeUtilCallableException
         Type of exception to be raised in the event of a fatal error. Defaults
@@ -325,7 +325,7 @@ def get_func_arg_names(
 
     # Code object underlying the passed callable if any *OR* "None" otherwise
     # (i.e., that callable has *NO* code object).
-    func_codeobj = get_func_codeobj(
+    func_codeobj = get_func_code_object(
         func=func,
         is_unwrap=is_unwrap,
         exception_cls=exception_cls,
