@@ -178,13 +178,14 @@ def _test_func_in_subprocess(test_func: Callable) -> object:
     Parameters
     ----------
     test_func : Callable
-        Test function to be run.
+        Test function to be run in a subprocess.
 
     Returns
     -------
     object
         Arbitrary object returned by this test if any *or* :data:`None`.
     '''
+    assert callable(test_func), f'{repr(test_func)} uncallable.'
 
     # Defer subpracess-specific imports.
     import sys
