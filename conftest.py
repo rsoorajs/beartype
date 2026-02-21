@@ -170,7 +170,7 @@ class _UnbufferedOutputStream(object):
         return getattr(self.stream, attr)
 
 # ....................{ PRIVATE ~ functions                }....................
-def _test_func_in_subprocess(test_func: Callable) -> object:
+def _test_func_in_subprocess(test_func: Callable, *args, **kwargs) -> object:
     '''
     Run the passed :mod:`pytest` test function isolated to a Python subprocess
     of the current Python process.
@@ -179,6 +179,8 @@ def _test_func_in_subprocess(test_func: Callable) -> object:
     ----------
     test_func : Callable
         Test function to be run in a subprocess.
+
+    All remaining parameters are passed as is to this test function.
 
     Returns
     -------
@@ -197,4 +199,4 @@ def _test_func_in_subprocess(test_func: Callable) -> object:
     sys.stdout = _UnbufferedOutputStream(sys.stdout)
 
     # Run this test and return the result of doing so.
-    return test_func()
+    return test_func(*args, **kwargs)

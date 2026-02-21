@@ -16,6 +16,10 @@ This private submodule is *not* intended for importation by downstream callers.
 # ....................{ IMPORTS                            }....................
 from beartype.roar import BeartypeDecorHintForwardRefException
 from beartype.roar._roarexc import _BeartypeUtilCallableScopeNotFoundException
+from beartype._cave._cavefast import (
+    CallableFrameType,
+    WeakrefCallableType,
+)
 from beartype._check.forward.scope.fwdscopecls import BeartypeForwardScope
 from beartype._check.metadata.call.callmetadecormin import (
     BeartypeCallDecorMinimalMeta)
@@ -25,6 +29,7 @@ from beartype._data.typing.datatyping import (
     TypeException,
 )
 from beartype._util.cls.utilclsget import get_type_locals
+from beartype._util.func.utilfunccodeobj import get_func_code_object
 from beartype._util.func.utilfuncframe import (
     find_frame_caller_external,
     get_frame_globals,
@@ -33,10 +38,11 @@ from beartype._util.func.utilfuncframe import (
 )
 from beartype._util.func.utilfuncscope import (
     get_func_globals,
-    get_func_locals,
+    get_func_locals_frame,
 )
 from beartype._util.hint.pep.proposal.pep695 import resolve_func_scope_pep695
 from beartype._util.module.utilmodget import get_object_module_name
+from typing import Optional
 
 # ....................{ FACTORIES ~ caller                 }....................
 #FIXME: Unit test us up, please.
@@ -226,6 +232,14 @@ def make_scope_forward_decor_meta(
     func = decor_meta.func
     cls_stack = decor_meta.cls_stack
 
+    # Stack frame on the current call stack embodying the parent callable or
+    # type locally declaring the decorated callable if any *OR* "None",
+    # defaulting to "None".
+    func_locals_frame: CallableFrameType | None = None
+
+    # Local scope of that call, defaulting to the empty dictionary.
+    func_locals: LexicalScope = FROZENDICT_EMPTY
+
     # Global scope of the decorated callable.
     func_globals = get_func_globals(func=func, exception_cls=exception_cls)
 
@@ -244,9 +258,8 @@ def make_scope_forward_decor_meta(
     if func_is_nested:
         # Attempt to...
         try:
-            # Local scope of the decorated callable, localized to improve
-            # readability and negligible efficiency when accessed below.
-            func_locals = get_func_locals(
+            # Local scope and associated stack frame of the decorated callable.
+            func_locals, func_locals_frame = get_func_locals_frame(
                 func=func,
 
                 # Ignore all lexical scopes in the fully-qualified name of the
@@ -255,9 +268,9 @@ def make_scope_forward_decor_meta(
                 # (including that class). Why? Because these classes are *ALL*
                 # currently being decorated and thus have yet to be encapsulated
                 # by new stack frames on the call stack. If these lexical scopes
-                # are *NOT* ignored, this call to get_func_locals() will fail to
-                # find the parent lexical scope of the decorated callable and
-                # then raise an unexpected exception.
+                # are *NOT* ignored, this call to get_func_locals_frame() will
+                # fail to find the parent lexical scope of the decorated
+                # callable and then raise an unexpected exception.
                 #
                 # Consider, for example, this nested class decoration of a
                 # fully-qualified "muh_package.Outer" class:
@@ -270,7 +283,7 @@ def make_scope_forward_decor_meta(
                 #
                 # When @beartype finally recurses into decorating the nested
                 # muh_package.Outer.Middle.Inner.muh_method() method, this call
-                # to get_func_locals() if *NOT* passed this parameter would
+                # to get_func_locals_frame() if *NOT* passed this parameter would
                 # naively assume that the parent lexical scope of the current
                 # muh_method() method on the call stack is named "Inner".
                 # Instead, the parent lexical scope of that method on the call
@@ -320,7 +333,7 @@ def make_scope_forward_decor_meta(
         # (almost certainly) already been deleted and is no longer accessible.
         # We have no recourse but to default to the empty frozen dictionary.
         except _BeartypeUtilCallableScopeNotFoundException:
-            func_locals = FROZENDICT_EMPTY
+            pass
 
         # If the decorated callable is a method transitively defined by a root
         # decorated class, add a pair of local attributes exposing:
@@ -441,8 +454,17 @@ def make_scope_forward_decor_meta(
     #     def muh_func(muh_arg: 'Dict[str, MuhGeneric[int]]') -> None: ...
     #
     #     class MuhGeneric(Generic[T]): ...
-    func_scope = decor_meta.func_scope_forward = (
-        BeartypeForwardScope(scope_name=func_module_name))
+    func_scope = decor_meta.func_scope_forward = BeartypeForwardScope(
+        scope_name=func_module_name,
+
+        # Weak reference to the code object of the parent callable or type
+        # locally declaring the decorated callable if any *OR* "None".
+        func_local_parent_codeobj_weakref=(
+            WeakrefCallableType(get_func_code_object(func_locals_frame))
+            if func_locals_frame is not None else
+            None
+        ),
+    )
 
     # Composite this global and local scope into this forward scope (in that
     # order), implicitly overwriting first each builtin attribute and then

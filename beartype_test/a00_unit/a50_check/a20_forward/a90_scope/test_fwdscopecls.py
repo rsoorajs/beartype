@@ -57,39 +57,50 @@ def test_beartype_forward_scope() -> None:
         scope_name='beartype_test.a00_unit.data.data_type',
     )
 
-    # class_ref = scope_forward[f'list[{CLASS_BASENAME}]']
-    # class_ref = scope_forward[f'list[{CLASS_BASENAME}]']
-
-    # ....................{ PASS                           }....................
+    # ....................{ PASS ~ resolve                 }....................
     # Assert that this forward scope trivially resolves references to attributes
     # seeded at initialization time through the "scope_dict" parameter *WITHOUT*
     # encapsulating those references in forward reference proxies.
     assert scope_forward['Class'] is Class
     assert scope_forward['Subclass'] is Subclass
 
-    #FIXME: Uncomment after worky. To do so, we'll need to additionally:
-    #* Generalize BeartypeForwardScope.__init__() to accept a new optional:
-    #      is_beartype_test: bool = False,
-    #* Generalize BeartypeForwardScope.__missing__() to pass that parameter to
-    #  the is_frame_caller_beartype() calls: e.g.,
-    #      is_frame_caller_beartype(
-    #          ignore_frames=2, is_beartype_test=self._is_beartype_test) or
-    #* Pass "is_beartype_test=True" above.
+    # Assert that this forward scope non-trivially proxies references to
+    # attributes *NOT* seeded at initialization time through the "scope_dict"
+    # parameter by encapsulating those references in forward reference proxies.
+    SubclassSubclassProxy = scope_forward.resolve_pep484_hint_str(
+        'SubclassSubclass')
+    assert is_beartype_forwardref(SubclassSubclassProxy) is True
 
-    # # Assert that this forward scope non-trivially proxies references to
-    # # attributes *NOT* seeded at initialization time through the "scope_dict"
-    # # parameter by encapsulating those references in forward reference proxies.
-    # SubclassSubclassProxy = scope_forward['SubclassSubclass']
-    # assert is_beartype_forwardref(SubclassSubclassProxy) is True
-    #
-    # # Assert that these proxies successfully proxy isinstance() checks against
-    # # the classes they proxy.
-    # assert isinstance(SubclassSubclass(), SubclassSubclassProxy)
+    # Assert that these proxies successfully proxy isinstance() checks against
+    # the classes they proxy.
+    assert isinstance(SubclassSubclass(), SubclassSubclassProxy)
 
-    #FIXME: Additionally test us up:
-    #    scope_forward.clear()
-    #    scope_forward.minify()
-    # Assert that this forward scope 
+    # ....................{ PASS ~ minify                  }....................
+    # Minify this forward scope.
+    scope_forward_min = scope_forward.minify()
+
+    # Assert that minification reduced this forward scope to a dictionary.
+    assert scope_forward_min.__class__ is dict
+
+    # Assert that minification truncated this dictionary to the proper subset of
+    # key-value pairs directly accessed above.
+    assert scope_forward_min == {
+        'Class': Class,
+        'Subclass': Subclass,
+        'SubclassSubclass': SubclassSubclassProxy,
+    }
+
+    # ....................{ PASS ~ clear                   }....................
+    # Assert that this forward scope is currently non-empty.
+    assert bool(scope_forward) is True
+    assert bool(scope_forward._hint_names_destringified) is True
+
+    # Clear this forward scope.
+    scope_forward.clear()
+
+    # Assert that this forward scope is now empty.
+    assert bool(scope_forward) is False
+    assert bool(scope_forward._hint_names_destringified) is False
 
     # ....................{ FAIL                           }....................
     # Assert that attempting to instantiate a forward scope with a scope name

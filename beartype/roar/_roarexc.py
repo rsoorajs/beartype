@@ -1894,7 +1894,7 @@ class _BeartypeUtilCallableScopeNotFoundException(
     **Beartype callable missing scope utility exception.**
 
     This exception is raised by the private
-    :mod:`beartype._util.func.utilfuncscope.get_func_locals` getter on failing
+    :mod:`beartype._util.func.utilfuncscope.get_func_locals_frame` getter on failing
     to find the lexical scope of the parent callable or class declaring the
     passed nested callable, enabling callers of that getter to identify this
     common edge case. This exception denotes a critical internal issue and

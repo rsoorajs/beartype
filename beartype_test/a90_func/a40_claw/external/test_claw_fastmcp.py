@@ -24,17 +24,6 @@ import pytest
 from beartype_test._util.mark.pytskip import skip_unless_package
 
 # ....................{ TESTS                              }....................
-#FIXME: Explicitly skip this integration test under both vanilla Microsoft
-#Windows *AND* macOS, where this test inexplicably erupts in unreadable pickling
-#errors resembling:
-#     _pickle.PicklingError: Can't pickle <function test_claw_fastmcp at
-#     0x000001DCDB47AA20>: it's not the same object as
-#     beartype_test.a90_func.a40_claw.external.test_claw_fastmcp.test_claw_fastmcp
-#
-#Clearly, this relates to coroutines. Private OS-specific implementations of
-#the standard "pickle" module fail to cope with coroutines, apparently. *shrug*
-#FIXME: *HMMM.* Actually, the issue is the combination of
-#@pytest.mark.run_in_subprocess + "async def".
 @skip_unless_package('fastmcp')
 @pytest.mark.run_in_subprocess
 async def test_claw_fastmcp() -> None:

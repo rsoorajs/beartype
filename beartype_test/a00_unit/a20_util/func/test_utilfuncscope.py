@@ -38,11 +38,11 @@ def attach_func_locals(**kwargs) -> 'collections.abc.Callable':
     Parameters
     ----------
     This decorator forwards all passed keyword parameters as is to the
-    :func:`beartype._util.func.utilfuncscope.get_func_locals` getter.
+    :func:`beartype._util.func.utilfuncscope.get_func_locals_frame` getter.
     '''
 
     # Defer scope-specific imports for sanity.
-    from beartype._util.func.utilfuncscope import get_func_locals
+    from beartype._util.func.utilfuncscope import get_func_locals_frame
 
     def _attach_func_locals(func) -> 'collections.abc.Callable':
         '''
@@ -50,7 +50,11 @@ def attach_func_locals(**kwargs) -> 'collections.abc.Callable':
         '''
 
         # Attach the local scope of that parent callable to the passed callable.
-        func.func_locals = get_func_locals(func=func, **kwargs)
+        #
+        # Ignore the stack frame associated with that local scope. Storing
+        # strong references to stack frames is generally inadvisable. Even if we
+        # did so here, it's unclear how the caller would test this stack frame.
+        func.func_locals, _ = get_func_locals_frame(func=func, **kwargs)
 
         # Reduce to the identity decorator.
         return func
@@ -160,16 +164,17 @@ def long_past_their_woodland_days():
 def test_get_func_locals() -> None:
     '''
     Test the
-    :func:`beartype._util.func.utilfuncscope.get_func_locals` getter.
+    :func:`beartype._util.func.utilfuncscope.get_func_locals_frame` getter.
     '''
 
     # ..................{ IMPORTS                            }..................
     # Defer test-specific imports.
     from beartype.roar._roarexc import _BeartypeUtilCallableException
-    from beartype.typing import Union
+    from beartype._data.kind.datakindmap import FROZENDICT_EMPTY
     from beartype._util.func.utilfuncmake import make_func
-    from beartype._util.func.utilfuncscope import get_func_locals
+    from beartype._util.func.utilfuncscope import get_func_locals_frame
     from pytest import raises
+    from typing import Union
 
     # ..................{ CALLABLES                          }..................
     def and_summon_the_shadows_there():
@@ -195,17 +200,24 @@ def test_get_func_locals() -> None:
         '<locals>.who_will_go_down_to_the_shady_groves')
 
     # ..................{ PASS ~ noop                        }..................
+    # 2-tuple returned by this getter for callables lacking a local scope.
+    GET_FUNC_LOCALS_FRAME_NONE = (FROZENDICT_EMPTY, None)
+
     # Assert this getter returns the empty dictionary for callables dynamically
     # declared in-memory.
-    assert get_func_locals(when_the_ash_and_oak_and_the_birch_and_yew) == {}
+    assert get_func_locals_frame(
+        when_the_ash_and_oak_and_the_birch_and_yew) == (
+        GET_FUNC_LOCALS_FRAME_NONE)
 
     # Assert this getter returns the empty dictionary for unnested callables.
-    assert get_func_locals(when_in_the_springtime_of_the_year) == {}
+    assert get_func_locals_frame(when_in_the_springtime_of_the_year) == (
+        GET_FUNC_LOCALS_FRAME_NONE)
 
     # Assert this getter returns the empty dictionary for nested callables
     # ignoring *ALL* of their parent lexical scopes.
-    assert get_func_locals(
-        func=and_summon_the_shadows_there, ignore_func_scope_names=1) == {}
+    assert get_func_locals_frame(
+        func=and_summon_the_shadows_there, ignore_func_scope_names=1) == (
+        GET_FUNC_LOCALS_FRAME_NONE)
 
     # ..................{ PASS ~ callable                    }..................
     # Arbitrary nested callable declared by a module-scoped callable.
@@ -242,17 +254,17 @@ def test_get_func_locals() -> None:
     # Assert this getter raises the expected exception for nested callables
     # whose unqualified and fully-qualified names are desynchronized.
     with raises(_BeartypeUtilCallableException):
-        get_func_locals(are_dressed_in_ribbons_fair)
+        get_func_locals_frame(are_dressed_in_ribbons_fair)
 
     # Assert this getter raises the expected exception for nested callables
     # whose fully-qualified name is prefixed by "<locals>".
     with raises(_BeartypeUtilCallableException):
-        get_func_locals(who_will_go_down_to_the_shady_groves)
+        get_func_locals_frame(who_will_go_down_to_the_shady_groves)
 
     # Assert this getter raises the expected exception for nested callables
     # erroneously ignoring more parent lexical scopes than actually exist.
     with raises(_BeartypeUtilCallableException):
-        get_func_locals(
+        get_func_locals_frame(
             func=and_summon_the_shadows_there,
             ignore_func_scope_names=2,
         )

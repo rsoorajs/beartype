@@ -60,13 +60,11 @@ def is_frame_beartype(
         either:
 
         * If :data:`False`, this tester treats the **beartype test suite**
-          (i.e., :mod:`beartype_test` package) as an external third party. If
-          the caller resides inside the related :mod:`beartype_test` codebase,
-          this tester returns :data:`False`.
+          (i.e., :mod:`beartype_test` package) as an external third party by
+          returning :data:`False` when the caller is the beartype test suite.
         * If :data:`True`, this tester treats our test suite as semantically
-          equivalent to the main :mod:`beartype` codebase. If the caller resides
-          inside the related :mod:`beartype_test` codebase, this tester returns
-          :data:`True`.
+          equivalent to the main :mod:`beartype` codebase by returning
+          :data:`True` when the caller is the beartype test suite.
 
         Defaults to :data:`False`.
 
@@ -448,66 +446,6 @@ def get_frame_package_name_or_none(frame: CallableFrameType) -> Optional[str]:
 
     # Return the name of this parent package.
     return frame_package_name
-
-# ....................{ GETTERS ~ name : module            }....................
-#FIXME: Unit test us up, please.
-def get_frame_caller_module_name_or_none(
-    # Optional parameters.
-    ignore_frames: int = 1,
-    exception_cls: TypeException = _BeartypeUtilCallFrameException,
-) -> Optional[str]:
-    '''
-    Fully-qualified name of the module executing the **caller** (i.e., lexical
-    scope directly calling this getter) if the caller resides in a module *or*
-    :data:`None` otherwise (e.g., if the caller was dynamically defined outside
-    any module structure).
-
-    This getter implicitly ignores the current call to this getter by
-    unconditionally adding ``1`` to the passed number of stack frames.
-
-    Parameters
-    ----------
-    ignore_frames : int
-        Number of stack frames on the current call stack to ignore (excluding
-        the stack frame encapsulating the call to this getter). Defaults to 1,
-        signifying the stack frame of the **caller** directly calling this
-        getter.
-    exception_cls : TypeException, optional
-        Type of exception to be raised in the event of a fatal error. Defaults
-        to :class:`._BeartypeUtilCallFrameException`.
-
-    Returns
-    -------
-    Optional[str]
-        Either:
-
-        * If the callable described by this frame resides in a module, the
-          fully-qualified name of that module.
-        * Else, :data:`None`.
-
-    See Also
-    --------
-    :func:`beartype._util.func.utilfunccodeobj.get_func_code_object_basename`
-        Related getter getting the unqualified basename of that callable.
-    '''
-
-    # Stack frame of the caller directly calling this getter, obtained by
-    # ignoring the stack frame of the current call to this getter.
-    frame_caller = get_frame_or_none(
-        ignore_frames=ignore_frames + 1, exception_cls=exception_cls)
-
-    # Return either...
-    return (
-        # If this stack frame exists, return either the fully-qualified name of
-        # the module defining the caller if the caller resides in a module *OR*
-        # "None" otherwise (e.g., if the caller was defined in a REPL).
-        get_frame_module_name_or_none(frame_caller)
-        if frame_caller is not None else
-        # Else, *NO* such stack frame exists, implying this getter was probably
-        # directly called from an interactive REPL (e.g., "ipython"). In this
-        # case, return "None".
-        None
-    )
 
 
 #FIXME: Unit test us up, please.

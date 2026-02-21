@@ -16,6 +16,7 @@ from beartype.roar._roarexc import (
     _BeartypeUtilCallableScopeNotFoundException,
 )
 from beartype._util.utilobject import get_object_basename_scoped
+from beartype._cave._cavefast import CallableFrameType
 from beartype._data.func.datafunccodeobj import CODE_OBJECT_BASENAME_MODULE_OR_EVAL
 from beartype._data.typing.datatyping import (
     LexicalScope,
@@ -23,6 +24,7 @@ from beartype._data.typing.datatyping import (
 )
 from beartype._data.kind.datakindmap import FROZENDICT_EMPTY
 from collections.abc import Callable
+from typing import Optional
 
 # ....................{ GETTERS ~ globals                  }....................
 #FIXME: Unit test us up, please.
@@ -35,7 +37,7 @@ def get_func_globals(
     exception_prefix: str = '',
 ) -> LexicalScope:
     '''
-    **Global scope** (i.e., a dictionary mapping from the name to value of each
+    **Global scope** (i.e., dictionary mapping from the name to value of each
     globally scoped attribute declared by the module transitively declaring
     the passed pure-Python callable) for this callable.
 
@@ -122,7 +124,7 @@ def get_func_globals(
     return func_globals
 
 # ....................{ GETTERS ~ locals                   }....................
-def get_func_locals(
+def get_func_locals_frame(
     # Mandatory parameters.
     func: Callable,
 
@@ -131,19 +133,15 @@ def get_func_locals(
     ignore_func_scope_names: int = 0,
     exception_cls: TypeException = _BeartypeUtilCallableScopeException,
     **kwargs
-) -> LexicalScope:
+) -> tuple[LexicalScope, Optional[CallableFrameType]]:
     '''
-    **Local scope** for the passed callable.
-
-    This getter returns either:
-
-    * If that callable is **nested** (i.e., is a method *or* is a non-method
-      callable declared in the body of another callable), a dictionary mapping
-      from the name to value of each **locally scoped attribute** (i.e., local
-      attribute declared by a parent callable transitively declaring that
-      callable) accessible to that callable.
-    * Else, the empty dictionary otherwise (i.e., if that callable is a
-      function directly declared by a module).
+    **Local scope** (i.e., dictionary mapping from the name to value of each
+    locally scoped attribute declared by a parent callable or type transitively
+    declaring that callable) and associated **local stack frame** if the passed
+    callable is **nested** (i.e., is a method *or* is a non-method callable
+    declared in the body of another callable) *or* the empty dictionary and
+    :data:`None` otherwise (i.e., if that callable is a global function directly
+    declared by a module).
 
     **This getter transparently supports methods.** In Python, methods are
     lexically nested in the scope encapsulating all previously declared **class
@@ -196,20 +194,28 @@ def get_func_locals(
 
     Caveats
     -------
-    **This high-level getter requires the private low-level**
-    :func:`sys._getframe` **getter.** If that getter is undefined, this getter
-    unconditionally treats the passed callable as module-scoped by returning the
-    empty dictionary rather than raising an exception. Since all standard
-    Python implementations (e.g., CPython, PyPy) define that getter, this
-    should typically *not* be a real-world concern.
+    **This getter calls the low-level** :func:`sys._getframe` **getter.** If
+    that getter is undefined, this getter treats the passed callable as
+    module-scoped by returning the empty dictionary rather than raising an
+    exception. Since all standard Python implementations (e.g., CPython, PyPy)
+    define that getter, this should typically *not* be a real-world concern.
 
-    **This high-level getter is inefficient and should thus only be called if
-    absolutely necessary.** Specifically, deciding the local scope for any
-    callable exhibits worst-case linear time complexity :math:`O(k)` for the
-    distance :math:`k` in call stack frames from the call of the current
-    function to the call of the top-most parent scope transitively declaring the
-    passed callable in its submodule. Ergo, this decision problem should be
-    deferred as long as feasible to minimize space and time consumption.
+    **This getter returns a strong reference to the stack frame on the current
+    call stack encapsulating the call to the passed callable.** Holding strong
+    references to stack frames prevents Python from garbage-collecting *any*
+    global or local attributes accessible to those frames and is thus strongly
+    (...get it?) discouraged. Callers should thus either immediately (in order):
+
+    #. Demote that strong reference to a weak reference (e.g., by wrapping that
+       reference with the standard :class:`weakref.ref` type).
+    #. Delete that strong reference in the caller's scope (e.g., via ``del``).
+
+    **This getter is inefficient and should thus only be called if necessary.**
+    Deciding the local scope for any callable exhibits worst-case linear time
+    complexity :math:`O(k)` for the distance :math:`k` in call stack frames from
+    the call of the current function to the call of the top-most parent scope
+    transitively declaring the passed callable in its submodule. To minimize
+    space and time consumption, defer doing so as long as feasible.
 
     Parameters
     ----------
@@ -240,8 +246,12 @@ def get_func_locals(
 
     Returns
     -------
-    LexicalScope
-        Local scope for this callable.
+    tuple[LexicalScope, CallableFrameType]
+        2-tuple ``(scope_local, scope_frame)`` for that callable, where:
+
+        * ``scope_local`` is the local scope of the parent call to that callable
+          on the current call stack.
+        * ``scope_frame`` is the stack frame encapsulating that call.
 
     Raises
     ------
@@ -302,7 +312,7 @@ def get_func_locals(
     # Then silently reduce to a noop by treating this nested callable as
     # module-scoped by preserving "func_locals" as the empty dictionary.
     ):
-        return FROZENDICT_EMPTY
+        return _GET_FUNC_LOCALS_FRAME_NONE
     # Else, all of the following constraints hold:
     # * The passed callable is physically declared on-disk.
     # * The passed callable is nested.
@@ -415,7 +425,7 @@ def get_func_locals(
     # implying that there is *NO* parent lexical scope to search for. In this
     # case, silently reduce to a noop by returning the empty dictionary.
     if func_scope_names_search_len == 0:
-        return FROZENDICT_EMPTY
+        return _GET_FUNC_LOCALS_FRAME_NONE
     # If a *NEGATIVE* number of unignorable lexical scopes encapsulate that
     # callable, the caller erroneously insists that there exist more ignorable
     # lexical scopes encapsulating that callable than there actually exist
@@ -453,6 +463,10 @@ def get_func_locals(
     # print(f'Searching for parent {func_scope_name}() local scope...')
 
     # ..................{ SEARCH                             }..................
+    # Stack frame on the current call stack embodying the parent callable or
+    # type directly declaring this nested callable if any *OR* "None".
+    func_frame: CallableFrameType | None = None
+
     # While at least one frame remains on the call stack, iteratively search up
     # the call stack for a stack frame embodying the parent callable directly
     # declaring this nested callable, whereupon that parent callable's local
@@ -542,7 +556,7 @@ def get_func_locals(
         # next frame in the call stack.
 
     # Return the local scope of the passed callable.
-    return func_scope
+    return func_scope, func_frame
 
 # ....................{ ADDERS                             }....................
 def add_func_scope_attr(
@@ -639,7 +653,7 @@ def add_func_scope_attr(
     # Return this name.
     return attr_name
 
-# ....................{ PRIVATE                            }....................
+# ....................{ PRIVATE ~ globals : strings        }....................
 _ATTR_NAME_PREFIX_ID_POSITIVE = '__beartype_object_'
 '''
 Arbitrary substring prefixing names dynamically synthesized by the
@@ -668,4 +682,12 @@ collisions between negative and positive attribute IDs whose absolute values are
 equal (e.g., ``|-42| == |42|``). To avoid this, the names of attributes whose
 IDs are negative are prefixed by a different substring than those of attributes
 whose IDs are positive. It's complicated. Did our hand-waving not convince you!?
+'''
+
+# ....................{ PRIVATE ~ globals : tuples         }....................
+_GET_FUNC_LOCALS_FRAME_NONE = (FROZENDICT_EMPTY, None)
+'''
+2-tuple ``(scope_local, scope_frame)`` to be returned from the
+:func:`.get_func_locals_frame` getter for the common case that the passed
+callable is a global function directly declared by a module.
 '''

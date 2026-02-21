@@ -39,7 +39,7 @@ def test_pep484_ref_decor_data() -> None:
         TheDarkestEveningOfTheYear,
         WithSluggishSurge,
         a_little_shallop,
-        # between_the_woods_and_frozen_lake,
+        between_the_woods_and_frozen_lake,
         but_i_have_promises,
         its_fields_of_snow,
         of_easy_wind,
@@ -101,21 +101,19 @@ def test_pep484_ref_decor_data() -> None:
     with raises(BeartypeCallHintParamViolation):
         AllHisBulkAnAgony(('Crept gradual, from the feet unto the crown,',))
 
-    #FIXME: Disabled until we decide whether we want to bother trying to
-    #resolve nested forward references or not.
-    # # ..................{ NESTED                             }..................
-    # # 3-tuple of closures and classes nested in this callable.
-    # (to_stop_without, to_watch_his_woods, WhoseWoodsTheseAreIThinkIKnow) = (
-    #     between_the_woods_and_frozen_lake())
-    #
-    # # Objects passed below to exercise nested forward references.
-    # MY_LITTLE_HORSE = WhoseWoodsTheseAreIThinkIKnow(
-    #     'My little horse must think it queer')
-    # STOP = WhoseWoodsTheseAreIThinkIKnow('To stop without a farmhouse near')
-    #
-    # # Assert these forward-referencing closures return the expected values.
-    # assert to_stop_without(MY_LITTLE_HORSE) == MY_LITTLE_HORSE
-    # assert to_watch_his_woods(STOP) == STOP
+    # ..................{ NESTED                             }..................
+    # 3-tuple of closures and classes nested in this callable.
+    (to_stop_without, to_watch_his_woods, WhoseWoodsTheseAreIThinkIKnow) = (
+        between_the_woods_and_frozen_lake())
+
+    # Objects passed below to exercise nested forward references.
+    MY_LITTLE_HORSE = WhoseWoodsTheseAreIThinkIKnow(
+        'My little horse must think it queer')
+    STOP = WhoseWoodsTheseAreIThinkIKnow('To stop without a farmhouse near')
+
+    # Assert these forward-referencing closures return the expected values.
+    assert to_stop_without(MY_LITTLE_HORSE) == MY_LITTLE_HORSE
+    assert to_watch_his_woods(STOP) == STOP
 
 # ....................{ TESTS ~ absolute : type : nonnested}....................
 def test_pep484_ref_decor_absolute() -> None:
@@ -424,14 +422,20 @@ def test_pep484_ref_call_fail() -> None:
     from beartype_test._util.pytroar import raises_uncached
 
     # ..................{ LOCALS                             }..................
+    # PEP 484-compliant stringified absolute forward reference referring to a
+    # non-existent type.
     TwoForwardRefsDivergedInAYellowWood = (
         'beartype_test.TwoRoadsDivergedInAYellowWood')
 
-    AndBothForwardRefsThatMorningEquallyLay = (
-        complex, TwoForwardRefsDivergedInAYellowWood, bool)
-
+    # PEP 484-compliant union subscripted by both this reference and two other
+    # arbitrary type hints.
     IShallBeTellingThisForwardRefWithASigh = Union[
         complex, 'IShallBeTellingThisWithASigh', bytes]
+
+    # PEP-noncompliant tuple union containing both this reference and two other
+    # arbitrary type hints.
+    AndBothForwardRefsThatMorningEquallyLay = (
+        complex, TwoForwardRefsDivergedInAYellowWood, bool)
 
     # ..................{ CALLABLES                          }..................
     @beartype
@@ -487,12 +491,19 @@ def test_pep484_ref_call_fail() -> None:
         return and_ages_hence
 
     # ..................{ FAIL                               }..................
+    # Assert that calling these callables annotated by relative forward
+    # references referring to non-existent types raise *NO* exceptions. Why?
+    # Because detecting this edge case is highly non-trivial, @beartype
+    # currently reduces unresolved relative forward references annotating
+    # locally defined callables to the ignorable "object" superclass.
+    assert yet_knowing_how_way('And that has made all the difference.') == (
+        'And that has made all the difference.')
+    assert somewhere_ages('I doubted if I should ever come back.') == (
+        'I doubted if I should ever come back.')
+
+    # ..................{ FAIL                               }..................
     # Assert that calling these callables raise the expected exceptions.
     with raises_uncached(BeartypeCallHintForwardRefException):
         the_road('Two roads diverged in a wood, and I—')
     with raises_uncached(BeartypeCallHintForwardRefException):
         in_leaves_no_step('I took the one less traveled by,')
-    with raises_uncached(BeartypeCallHintForwardRefException):
-        yet_knowing_how_way('And that has made all the difference.')
-    with raises_uncached(BeartypeCallHintForwardRefException):
-        somewhere_ages('I doubted if I should ever come back.')

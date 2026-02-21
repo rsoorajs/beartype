@@ -393,11 +393,11 @@ test-tox = [
     # ....................{ ETC                            }....................
     # Miscellaneous optional test-time dependencies.
 
-    #FIXME: Reenable Python >= 3.14 support *AFTER* nuitka and all reverse
+    #FIXME: Reenable Python >= 3.15 support *AFTER* nuitka and all reverse
     #dependencies thereof officially ship Python 3.14 wheels.
     # Required by optional nuitka-specific integration tests if the current
     # platform is a Linux distribution.
-    "nuitka >=1.2.6; sys_platform == 'linux' and python_version < '3.14.0'",
+    "nuitka >=1.2.6; sys_platform == 'linux' and python_version < '3.15.0'",
 
     # ....................{ CLI                            }....................
     # Required by optional Typer-specific integration tests.
@@ -426,9 +426,9 @@ test-tox = [
     # ....................{ SCIENCE ~ data                 }....................
     # Data science-centric optional test-time dependencies.
 
-    #FIXME: Reenable Python >= 3.14 support *AFTER* Numba supports Python 3.14.
+    #FIXME: Reenable Python >= 3.15 support *AFTER* Numba supports Python 3.15.
     # Required by optional numba-specific integration tests.
-    "numba; python_version < '3.14.0'",
+    "numba; python_version < '3.15.0'",
 
     # ....................{ SCIENCE ~ data : ml            }....................
     # Machine learning-centric optional test-time dependencies. These
@@ -438,11 +438,11 @@ test-tox = [
     # improve the likelihood of success on both local and remote workflows,
     # these dependencies are intentionally confined to Linux.
 
-    #FIXME: Reenable Python >= 3.14 support *AFTER* PyTorch supports Python
+    #FIXME: Reenable Python >= 3.15 support *AFTER* PyTorch supports Python
     #3.14.
     # Required by optional PyTorch-specific integration tests if the current
     # platform is a Linux distribution.
-    "torch; sys_platform == 'linux' and python_version < '3.14.0'",
+    "torch; sys_platform == 'linux' and python_version < '3.15.0'",
 
     # ....................{ SCIENCE ~ data : ml : jax      }....................
     # JAX-specific optional test-time dependencies.
@@ -478,7 +478,7 @@ test-tox = [
     # ....................{ SCIENCE ~ data : ml : numpy    }....................
     # NumPy-specific optional test-time dependencies.
 
-    #FIXME: Reenable Python >= 3.15 support *AFTER* NumPy supports Python 3.14.
+    #FIXME: Reenable Python >= 3.15 support *AFTER* NumPy supports Python 3.15.
     #FIXME: Consider dropping the 'and platform_python_implementation != "PyPy"'
     #clause now that "tox.ini" installs NumPy wheels from a third-party vendor
     #explicitly supporting PyPy.
@@ -511,12 +511,12 @@ test-tox = [
        platform_python_implementation != 'PyPy'\
     """,
 
-    #FIXME: Reenable Python >= 3.14 support *AFTER* explicitly supported.
+    #FIXME: Reenable Python >= 3.15 support *AFTER* explicitly supported.
     #See above for further commentary.
     # Required by optional LangChain-specific integration tests. Note that
     # LangChain requires both NumPy and Pydantic.
     """langchain; \
-       python_version < '3.14.0' and \
+       python_version < '3.15.0' and \
        sys_platform != 'darwin' and \
        platform_python_implementation != 'PyPy'\
     """,
@@ -524,18 +524,17 @@ test-tox = [
     # ....................{ SCIENCE ~ data : ml : dataframe}....................
     # DataFrame (e.g., Pandas, Polars)-specific optional test-time dependencies.
 
-    #FIXME: Reenable Python >= 3.14 support *AFTER* explicitly supported. See:
-    #    https://github.com/unionai-oss/pandera/pull/2158
+    #FIXME: Reenable Python >= 3.15 support *AFTER* explicitly supported.
     # Required by optional Pandera-specific integration tests. Note that:
     # * Pandera requires Pydantic and Pandas.
     # * The @beartype test suite requires pandera >= 0.26.0. Prior pandera
     #   versions were Pandas-specific. Modern pandera versions are API-agnostic
     #   and now support a wide variety of DataFrame-like APIs, including Polars.
-    "pandera >= 0.26.0; python_version < '3.14.0'",
+    "pandera >= 0.26.0; python_version < '3.15.0'",
 
-    #FIXME: Reenable Python >= 3.14 support *AFTER* explicitly supported.
+    #FIXME: Reenable Python >= 3.15 support *AFTER* explicitly supported.
     # Required by optional Pandera- and Polars-specific integration tests.
-    "polars; python_version < '3.14.0'",
+    "polars; python_version < '3.15.0'",
 
     #FIXME: Reenable Python >= 3.15 support *AFTER* explicitly supported
     # Required by optional xarray-specific integration tests. Note that xarray
@@ -545,10 +544,10 @@ test-tox = [
     # ....................{ SCIENCE ~ data : ml : pydantic }....................
     # Pydantic-specific optional test-time dependencies.
 
-    #FIXME: Reenable Python >= 3.14 support *AFTER* explicitly supported.
+    #FIXME: Reenable Python >= 3.15 support *AFTER* explicitly supported.
     # Required by optional FastMCP-specific integration tests. Note that FastMCP
     # requires Pydantic.
-    "fastmcp; python_version < '3.14.0'",
+    "fastmcp; python_version < '3.15.0'",
 
     #FIXME: Actually, let's *NOT* install "pyarrow". "pyarrow" is super-intense,
     #because Apache Arrow is super-intense. Since nothing in @beartype requires

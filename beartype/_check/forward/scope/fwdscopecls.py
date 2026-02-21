@@ -47,7 +47,7 @@ from beartype._data.typing.datatyping import (
 from beartype._data.typing.datatypingport import Hint
 from beartype._util.func.utilfuncframe import (
     get_frame_or_none,
-    get_frame_caller_module_name_or_none,
+    get_frame_module_name_or_none,
     is_frame_beartype,
     is_frame_eval,
     # iter_frames,
@@ -155,6 +155,7 @@ class BeartypeForwardScope(LexicalScope):
         # Optional parameters.
         func_local_parent_codeobj_weakref: FuncLocalParentCodeObjectWeakref = (
             None),
+        is_beartype_test_beartype: bool = False,
         scope_dict: LexicalScope = scope_builtins,
     ) -> None:
         '''
@@ -192,7 +193,7 @@ class BeartypeForwardScope(LexicalScope):
             proxy subtype proxies a stringified forward reference annotating a
             locally decorated callable *or* :data:`None` otherwise. See also the
             :attr:`beartype._check.forward.reference.fwdrefabc.BeartypeForwardRefABC.__func_local_parent_codeobj_weakref_beartype__`
-            class variable docstring for further details.
+            class variable for further details.
 
         Raises
         ------
@@ -470,10 +471,6 @@ class BeartypeForwardScope(LexicalScope):
             # standard "KeyError" exception expected by callers. See also the
             # "Caveats" subsection of the docstring for commentary.
         ):
-            # print(f'caller+1: {get_frame_caller_module_name_or_none(ignore_frames=1)}')
-            # print(f'caller+2: {get_frame_caller_module_name_or_none(ignore_frames=2)}')
-            # print(f'caller+3: {get_frame_caller_module_name_or_none(ignore_frames=3)}')
-
             # Exception message to be raised.
             exception_message = (
                 f'Forward reference scope "{self._scope_name}" '
@@ -482,8 +479,11 @@ class BeartypeForwardScope(LexicalScope):
 
             # Fully-qualified name of the module declaring the caller if any
             # *OR* "None" otherwise (e.g., if declared in an interactive REPL).
-            frame_caller_module_name = get_frame_caller_module_name_or_none(
-                ignore_frames=2)
+            frame_caller_module_name = (
+                get_frame_module_name_or_none(frame_caller)
+                if frame_caller is not None else
+                None
+            )
 
             # If the caller has a module, append the fully-qualified name of
             # that module to this exception message to improve debuggability.
@@ -512,8 +512,7 @@ class BeartypeForwardScope(LexicalScope):
         # Return this proxy.
         return forwardref_subtype
 
-    # ..................{ CLEARERS                           }..................
-    #FIXME: Unit test us up, please.
+    # ..................{ OVERRIDES                          }..................
     def clear(self) -> None:
         '''
         Reduce this forward scope to the empty dictionary.
@@ -523,10 +522,54 @@ class BeartypeForwardScope(LexicalScope):
         super().clear()
 
         # Clear all subclass-specific instance variables as well.
+        self._func_local_parent_codeobj_weakref = None
         self._hint_names_destringified.clear()
 
+    # ..................{ RESOLVERS                          }..................
+    def resolve_pep484_hint_str(self, hint_name: str) -> Hint:
+        '''
+        Type hint referred to by the passed :pep:`484`-compliant stringified
+        forward reference type hint.
+
+        Caveats
+        -------
+        **Most callers should prefer resolving stringified forward references
+        via dictionary lookups on this forward scope.** This method is *only*
+        intended to be called from tests as a means of testing the otherwise
+        obscured :meth:`__getitem__` and :meth:`__missing__` dunder methods,
+        which conditionally modifies their behaviour depending on whether the
+        caller resides inside the main :mod:`beartype` codebase or not. Tests
+        reside outside :mod:`beartype` and thus have no direct means of testing
+        both branches of that conditionality.
+
+        Parameters
+        ----------
+        hint_name : str
+            Relative (i.e., unqualified) or absolute (i.e., fully-qualified)
+            name of this unresolved type hint.
+
+        Returns
+        -------
+        Hint:
+            Either:
+
+            * If this type hint already exists as an attribute in either the
+              local or global scope aggregated by this forward scope, that hint.
+            * Else, a **forward reference proxy** (i.e.,
+              :class:`.BeartypeForwardRefSubbableABC` object) deferring the
+              resolution of this unresolved type hint implicitly created and
+              returned by the lower-level :meth:`__missing__` dunder method.
+
+        Raises
+        ------
+        BeartypeDecorHintForwardRefException
+            If this type hint name is *not* a valid Python identifier.
+        '''
+
+        # Trivial one-liner, we invoke thee!
+        return self[hint_name]
+
     # ..................{ MINIFIERS                          }..................
-    #FIXME: Unit test us up, please.
     def minify(self) -> LexicalScope:
         '''
         **Minimal lexical scope** (i.e., dictionary mapping from the name to
@@ -539,7 +582,13 @@ class BeartypeForwardScope(LexicalScope):
         This minifier creates and returns the minimal dictionary required to
         type-check the callable currently being decorated by the
         :func:`beartype.beartype` decorator at the post-decoration time that
-        callable is subsequently called. Why? Because:
+        callable is subsequently called. Since the type-checking code
+        dynamically generated by that decorator is guaranteed to access *only*
+        the key-value pairs contained in this minimal dictionary, this minimal
+        dictionary is the minimal data structure that suffices to satisfy all
+        post-decoration requirements for runtime type-checking of stringified
+        forward references. This minimal dictionary is much safer than this
+        forward scope. Why? Because:
 
         * Forward scopes are dictionaries aggregating the *entire* global and
           local scope of that decorated callable and thus consume excess space.

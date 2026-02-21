@@ -25,7 +25,7 @@ from beartype._data.typing.datatyping import (
     BeartypeableT,
     TypeStack,
 )
-from beartype._decor._type._pep._decortypepep557 import (
+from beartype._decor._type._pep.decortypepep557 import (
     beartype_pep557_dataclass)
 from beartype._util.cache.utilcacheclear import clear_caches
 from beartype._util.cls.pep.clspep557 import is_type_pep557_dataclass

@@ -133,7 +133,7 @@ def _test_coro_synchronously(test_coro: Coroutine, *args, **kwargs) -> object:
     test_coro: Coroutine
         Asynchronous test coroutine to be run synchronously.
 
-    All remaining parameters are passed as is to this coroutine.
+    All remaining parameters are passed as is to this test coroutine.
 
     Returns
     -------
