@@ -268,47 +268,6 @@ def get_func_code_object_or_none(
 
 # ....................{ GETTERS ~ attribute                }....................
 #FIXME: Unit test us up, please. *sigh*
-def get_code_object_basename(code_object: CallableCodeObjectType) -> str:
-    '''
-    Unqualified basename of the **physical lexical scope** (i.e., module, class,
-    callable) of the passed code object if that object is executed inside a
-    scope that physically exists *or* the string constant
-    :data:`beartype._data.func.datafunccodeobj.CODE_OBJECT_BASENAME_MODULE_OR_EVAL`
-    if that code object is executed dynamically in-memory outside such a scope.
-
-    Specifically, this getter returns:
-
-    * If the active Python interpreter targets Python >= 3.11, the value of the
-      ``co_qualname`` attribute defined on this code object.
-    * Else, the value of the ``co_name`` attribute defined on this code object.
-
-    Parameters
-    ----------
-    code_object : CallableCodeObjectType
-        Code object to introspect the absolute filename of.
-
-    Returns
-    -------
-    str
-         If this codeobjable has *no* code object and is thus *not* pure-Python.
-    '''
-    assert isinstance(code_object, CallableCodeObjectType), (
-        f'{repr(code_object)} not code object.')
-
-    # Return either...
-    return (
-        # If the active Python interpreter targets Python >= 3.11 and thus
-        # defines the "co_qualname" attribute on code objects, that attribute;
-        code_object.co_qualname  # type: ignore[attr-defined]
-        if IS_PYTHON_AT_LEAST_3_11 else
-        # Else, the active Python interpreter targets Python < 3.11 and thus
-        # does *NOT* defines the "co_qualname" attribute on code objects. In
-        # this case, the "co_name" attribute instead.
-        code_object.co_name
-    )
-
-
-#FIXME: Unit test us up, please. *sigh*
 def get_code_object_filename(
     code_object: CallableCodeObjectType) -> Optional[str]:
     '''
@@ -347,3 +306,75 @@ def get_code_object_filename(
     # *ALL* C-based builtins (e.g., len()) with code objects failing to provide
     # this metadata. Yes, this is awful. Yes, this is the Python ecosystem.
     return getattr(code_object, 'co_filename', None)
+
+# ....................{ GETTERS ~ attribute                }....................
+#FIXME: Unit test us up, please. *sigh*
+def get_code_object_basename(code_object: CallableCodeObjectType) -> str:
+    '''
+    Unqualified basename of the **physical lexical scope** (i.e., module, class,
+    callable) of the passed code object if that object is executed inside a
+    scope that physically exists *or* the string constant
+    :data:`beartype._data.func.datafunccodeobj.CODE_OBJECT_BASENAME_MODULE_OR_EVAL`
+    if that code object is executed dynamically in-memory outside such a scope.
+
+    Specifically, this getter returns:
+
+    * If the active Python interpreter targets Python >= 3.11, the value of the
+      ``co_qualname`` attribute defined on this code object.
+    * Else, the value of the ``co_name`` attribute defined on this code object.
+
+    Parameters
+    ----------
+    code_object : CallableCodeObjectType
+        Code object to introspect the absolute filename of.
+
+    Returns
+    -------
+    str
+        Unqualified basename of this code object.
+    '''
+    assert isinstance(code_object, CallableCodeObjectType), (
+        f'{repr(code_object)} not code object.')
+
+    # Return either...
+    return (
+        # If the active Python interpreter targets Python >= 3.11 and thus
+        # defines the "co_qualname" attribute on code objects, that attribute;
+        code_object.co_qualname  # type: ignore[attr-defined]
+        if IS_PYTHON_AT_LEAST_3_11 else
+        # Else, the active Python interpreter targets Python < 3.11 and thus
+        # does *NOT* defines the "co_qualname" attribute on code objects. In
+        # this case, the "co_name" attribute instead.
+        code_object.co_name
+    )
+
+
+#FIXME: Unit test us up, please. *sigh*
+def get_code_object_basename_last(code_object: CallableCodeObjectType) -> str:
+    '''
+    Last ``"."``-delimited component of the unqualified basename of the
+    **physical lexical scope** (i.e., module, class, callable) of the passed
+    code object if that object is executed inside a scope that physically exists
+    *or* the string constant
+    :data:`beartype._data.func.datafunccodeobj.CODE_OBJECT_BASENAME_MODULE_OR_EVAL`
+    if that code object is executed dynamically in-memory outside such a scope.
+
+    This getter unconditionally returns the value of the ``co_name`` attribute
+    defined on this code object.
+
+    Parameters
+    ----------
+    code_object : CallableCodeObjectType
+        Code object to introspect the absolute filename of.
+
+    Returns
+    -------
+    str
+        Last ``"."``-delimited component of the unqualified basename of this
+        code object.
+    '''
+    assert isinstance(code_object, CallableCodeObjectType), (
+        f'{repr(code_object)} not code object.')
+
+    # Tread trepidatiously, intrepid one-liner!
+    return code_object.co_name

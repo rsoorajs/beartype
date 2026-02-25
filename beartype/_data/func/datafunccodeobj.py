@@ -13,10 +13,11 @@ This private submodule is *not* intended for importation by downstream callers.
 # ....................{ STRINGS                            }....................
 CODE_OBJECT_BASENAME_MODULE_OR_EVAL = '<module>'
 '''
-Arbitrary string constant unconditionally assigned to the ``co_name`` instance
-variables of the code objects of all pure-Python modules (i.e., the top-most
-lexical scope of each module in the current call stack) *and* pure-Python code
-snippets dynamically executed by the :func:`exec` and :func:`eval` builtins.
+Arbitrary string constant unconditionally assigned to both the ``co_name`` *and*
+``co_qualname`` attributes of the code objects of all pure-Python modules (i.e.,
+the top-most lexical scope of each module in the current call stack) *and*
+pure-Python code snippets dynamically executed by the :func:`exec` and
+:func:`eval` builtins.
 
 This constant enables callers to reliably differentiate between code objects
 encapsulating:
@@ -30,8 +31,8 @@ encapsulating:
 CODE_OBJECT_FILENAME_EVAL = '<string>'
 '''
 Arbitrary string constant unconditionally assigned to the ``co_filename``
-instance variables of the code objects of all pure-Python code snippets
-dynamically executed by the :func:`exec` and :func:`eval` builtins.
+attribute of the code objects of all pure-Python code snippets dynamically
+executed by the :func:`exec` and :func:`eval` builtins.
 
 This constant enables callers to reliably differentiate between code objects
 encapsulating:

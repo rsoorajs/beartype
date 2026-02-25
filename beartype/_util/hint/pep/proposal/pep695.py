@@ -104,10 +104,6 @@ This private submodule is *not* intended for importation by downstream callers.
 # ....................{ IMPORTS                            }....................
 from beartype.meta import URL_ISSUES
 from beartype.roar import BeartypeDecorHintPep695Exception
-from beartype.typing import (
-    Iterable,
-    Optional,
-)
 from beartype._cave._cavefast import (
     # HintGenericSubscriptedType,
     HintPep695TypeAlias,
@@ -137,7 +133,11 @@ from beartype._util.py.utilpyversion import (
     IS_PYTHON_AT_MOST_3_11,
 )
 from beartype._data.kind.datakindiota import SENTINEL
-from collections.abc import Callable
+from collections.abc import (
+    Callable,
+    Iterable,
+)
+from typing import Optional
 
 # ....................{ TESTERS                            }....................
 def is_hint_pep695_subbed(hint: Hint) -> bool:
@@ -341,6 +341,14 @@ def add_func_scope_hint_pep695_parameterizable_typeparams(
     '''
     assert isinstance(func_scope, dict), f'{repr(func_scope)} not dictionary.'
     # print(f'Updating PEP 695 parameterizable {repr(parameterizable)} scope {repr(func_scope)}...')
+
+    # ....................{ PREAMBLE                       }....................
+    # If the active Python interpreter targets Python <= 3.11, this interpreter
+    # fails to support PEP 695. In this case, silently reduce to a noop.
+    if IS_PYTHON_AT_MOST_3_11:
+        return
+    # Else, this interpreter targets Python >= 3.12. In this case, this
+    # interpreter supports PEP 695.
 
     # ....................{ IMPORTS                        }....................
     # Avoid circular import dependencies.

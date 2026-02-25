@@ -18,10 +18,8 @@ from beartype.roar import  (
     BeartypeDecorHintForwardRefException,
     BeartypeDecorHintPep695Exception,
 )
-from beartype.typing import (
-    Optional,
-)
 from pytest import raises
+from typing import Optional
 
 # ....................{ CALLABLES                          }....................
 @beartype
