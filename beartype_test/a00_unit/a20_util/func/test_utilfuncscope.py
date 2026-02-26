@@ -69,13 +69,14 @@ def when_in_the_springtime_of_the_year():
     '''
 
     # Defer scope-specific imports for sanity.
-    from beartype.typing import Union
+    from beartype._util.func.utilfuncframe import GET_FRAME_CALLER_PARENT
+    from typing import Union
 
     # Arbitrary PEP-compliant type hint localized to this parent callable.
     type_hint = Union[int, str]
 
     # Ignore the call to this @attach_func_locals() decorator.
-    @attach_func_locals(ignore_frames=1)
+    @attach_func_locals(ignore_frames=GET_FRAME_CALLER_PARENT)
     def when_the_trees_are_crowned_with_leaves() -> type_hint:
         '''
         Arbitrary nested callable annotated by a type hint localized to the

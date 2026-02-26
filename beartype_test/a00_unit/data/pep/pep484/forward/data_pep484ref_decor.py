@@ -6,7 +6,7 @@
 '''
 Test-wide :pep:`484`-compliant **stringified forward reference type hint**
 (i.e., strings whose values are the names of classes and tuples of classes, one
-or more of which typically have yet to be defined) data submodule.
+or more of which typically have yet to be defined) decoration data submodule.
 
 This submodule exercises stringified forward reference support implemented in
 the :func:`beartype.beartype` decorator. This support can *only* be fully
@@ -15,7 +15,8 @@ unit test. Why? Because:
 
 * That decorator is only safely importable from within the body of a unit test.
 * Forward reference type hints can only refer to objects defined at module
-  scope rather than from within the body of a unit test.
+  scope rather than from within the body of a unit test. Actually, that's no
+  longer true. But let's pretend it is because we don't want to rewrite this.
 * Forward reference type hints referring to objects previously defined at
   module scope fail to exercise the deferred nature of forward references.
 * Ergo, callables that are decorated by that decorator, annotated by one or

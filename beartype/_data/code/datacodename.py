@@ -71,9 +71,6 @@ type-checker injected for :pep:`526`-compliant annotated variable assignments by
 '''
 
 
-#FIXME: *REDUNDANT.* The same metadata is now directly accessible via the
-#existing "{ARG_NAME_CALL_META}.func" field available to *ALL* type-checking
-#wrapper functions. Obsolete this redundant hidden parameter, please. *sigh*
 ARG_NAME_FUNC = f'{NAME_PREFIX}func'
 '''
 Name of the **private decorated callable parameter** (i.e.,

@@ -112,6 +112,20 @@ def test_get_frame() -> None:
     # Assert this attribute is a callable under both CPython and PyPy.
     assert callable(get_frame) is True
 
+# ....................{ TESTS ~ getters : scope            }....................
+def test_get_frame_parent_object_or_none() -> None:
+    '''
+    Test the
+    :func:`beartype._util.func.utilfuncframe.get_frame_parent_object_or_none`
+    getter.
+    '''
+
+    # ....................{ IMPORTS                        }....................
+    # Defer test-specific imports.
+    #
+    # Note that importing this submodule suffices to fully validate this getter.
+    from beartype_test.a00_unit.data.util.func import data_utilfuncframe
+
 # ....................{ TESTS ~ finders                    }....................
 def test_find_frame_caller_external() -> None:
     '''

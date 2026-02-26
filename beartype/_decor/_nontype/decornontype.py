@@ -17,10 +17,6 @@ from beartype.roar import (
     BeartypeDecorWrappeeException,
     BeartypeDecorWrapperException,
 )
-from beartype.typing import (
-    Optional,
-    no_type_check,
-)
 from beartype._check.metadata.call.callmetadecor import (
     cull_decor_meta,
     make_decor_meta,
@@ -45,6 +41,7 @@ from beartype._util.api.standard.utilfunctools import (
     is_func_functools_lru_cache,
 )
 from beartype._util.func.utilfuncmake import make_func
+from beartype._util.func.utilfuncscope import get_func_globals
 from beartype._util.func.utilfunctest import (
     is_func_codeobjable,
     is_func_wrapper,
@@ -53,6 +50,10 @@ from beartype._util.func.utilfuncwrap import unwrap_func_once
 from beartype._util.module.utilmodget import get_object_module_name_or_none
 from beartype._util.text.utiltextrepr import represent_object
 from collections.abc import Callable
+from typing import (
+    Optional,
+    no_type_check,
+)
 
 # ....................{ DECORATORS                         }....................
 def beartype_nontype(obj: BeartypeableT, **kwargs) -> BeartypeableT:
@@ -427,6 +428,43 @@ def beartype_func(
     func_wrapper = make_func(
         func_name=decor_meta.func_wrapper_name,
         func_code=func_wrapper_code,
+
+        #FIXME: We need to do this, but this appears to require that we
+        #additionally add in the "builtins" dictionary. Okay. Let's:
+        #* Rename "decor_meta.func_wrapper_scope" to
+        #  "decor_meta.func_wrapper_locals" for disambiguity.
+        #* Define a new "func_wrapper_globals" *LOCAL* variable above. No reason
+        #  to make that a full-blown bound instance variable elsewhere: e.g.,
+        #      from builtins import __dict__ as scope_builtins
+        #      func_wrapper_globals = scope_builtins.copy()
+        #      func_wrapper_globals.update(get_func_globals(
+        #          decor_meta.func_wrappee_wrappee))
+        #* Pass "func_wrapper_globals" here.
+
+        # Propagate the global scope of the unwrapped decorated callable as the
+        # global scope of this wrapper. Although this type-checking code does
+        # *NOT* explicitly require this scope, it costs us nothing to trivially
+        # propagate this scope and gains us much. Doing so enables subsequently
+        # performed call stack introspection to transparently introspect the
+        # global scope of beartype-created type-checking wrappers as if they
+        # were their unwrapped decorated callables, improving integration with
+        # both external third-party packages *AND* call stack introspection
+        # subsequently performed in this package, including:
+        # * The get_frame_parent_object_or_none() getter subsequently called by
+        #   the make_scope_forward_decor_meta() factory, enabling resolution of
+        #   PEP 484-compliant stringified forward references to PEP
+        #   695-compliant type parameter scopes of parent callables of the
+        #   currently decorated closure. See also unit tests in the
+        #   test-specific "data_pep484ref_decor_pep695" data submodule.
+        # func_globals=get_func_globals(decor_meta.func_wrappee_wrappee),
+
+        #FIXME: Ideally, we should also propagate the local scope of the
+        #unwrapped decorated callable as the local scope of this wrapper. Doing
+        #so is clearly complicated by the fact that we already use a fake local
+        #scope. Ergo, we'll need to composite these two scopes into a new
+        #unified scope -- with our fake local scope taking precedence. Since the
+        #latter *ONLY* defines "__beartype_"-prefixed variables, there should be
+        #*NO* conflict. Maybe? Let's give it a go, yo.
         func_locals=decor_meta.func_wrapper_scope,
         func_wrapped=decor_meta.func_wrapper,  # pyright: ignore
         func_labeller=decor_meta.label_func_wrapper,

@@ -18,6 +18,7 @@ from beartype._cave._cavefast import (
     CallableCodeObjectType,
     CallableFrameType,
 )
+# from beartype._data.code.datacodename import ARG_NAME_FUNC
 from beartype._data.func.datafunccodeobj import (
     CODE_OBJECT_BASENAME_MODULE_OR_EVAL,
     CODE_OBJECT_FILENAME_EVAL,
@@ -33,6 +34,33 @@ from collections.abc import (
     Mapping,
 )
 from typing import Optional
+
+# ....................{ CONSTANTS                          }....................
+GET_FRAME_CALLER = 0
+'''
+Value of the ``ignore_frames`` parameter accepted by most callables defined by
+this submodule such that the result accesses the **caller** (i.e., external
+lexical scope currently being executed by the active Python interpreter).
+'''
+
+
+GET_FRAME_CALLER_PARENT = 1
+'''
+Value of the ``ignore_frames`` parameter accepted by most callables defined by
+this submodule such that the result accesses the **caller's parent** (i.e.,
+external lexical scope most recently executed *before* the external lexical
+scope currently being executed by the active Python interpreter).
+'''
+
+
+GET_FRAME_CALLER_PARENT_PARENT = 2
+'''
+Value of the ``ignore_frames`` parameter accepted by most callables defined by
+this submodule such that the result accesses the **caller's parent's parent**
+(i.e., external lexical scope second most recently executed *before* the
+external lexical scope second most recently executed *before* the external
+lexical scope currently being executed by the active Python interpreter).
+'''
 
 # ....................{ TESTERS                            }....................
 #FIXME: Unit test us up, please.
@@ -401,6 +429,10 @@ def get_frame_globals(frame: CallableFrameType) -> LexicalScope:
     :class:`.CallableFrameType` instance encapsulating all metadata describing a
     single call on the current call stack).
 
+    As a caller convenience, this getter intentionally returns a new mutable
+    dictionary rather than the immutable non-dictionary originally providing
+    this stack frame's global scope.
+
     Parameters
     ----------
     frame : CallableFrameType
@@ -425,9 +457,13 @@ def get_frame_globals(frame: CallableFrameType) -> LexicalScope:
 #FIXME: Unit test up, please. *sigh*
 def get_frame_locals(frame: CallableFrameType) -> LexicalScope:
     '''
-    **Local scope** encapsulated by the passed **stack frame** (i.e.,
-    :class:`.CallableFrameType` instance encapsulating all metadata describing a
-    single call on the current call stack).
+    Safely mutable **local scope** encapsulated by the passed **stack frame**
+    (i.e., :class:`.CallableFrameType` instance encapsulating all metadata
+    describing a single call on the current call stack).
+
+    As a caller convenience, this getter intentionally returns a new mutable
+    dictionary rather than the immutable non-dictionary originally providing
+    this stack frame's local scope.
 
     Parameters
     ----------
@@ -593,21 +629,24 @@ def get_frame_module_name_or_none(frame: CallableFrameType) -> Optional[str]:
 #     return frame_name
 
 # ....................{ GETTERS ~ scope                    }....................
-#FIXME: Unit test us up, please.
 def get_frame_parent_object_or_none(frame: CallableFrameType) -> object:
     '''
-    **Lexical parent object** (i.e., pure-Python module, class, or callable)
-    whose body is the lexical scope physically executing the passed **stack
-    frame** (i.e., :class:`.CallableFrameType` instance encapsulating all
-    metadata describing a single call on the current call stack) if such a
-    parent object can be found *or* :data:`None` otherwise.
+    **Lexical parent object** (i.e., pure-Python module or callable) whose body
+    is the lexical scope physically executing the passed **stack frame** (i.e.,
+    :class:`.CallableFrameType` instance encapsulating all metadata describing a
+    single call on the current call stack) if such a parent object can be found
+    *or* :data:`None` otherwise.
 
-    For example, if this frame encapsulates the definition of a:
+    For example, if this frame encapsulates:
 
-    * Globally scoped function or class, this getter returns the parent module
-      defining that function or class.
-    * Method, this getter returns the parent class defining that method.
-    * Closure, this getter returns the parent callable defining that closure.
+    * The global scope (i.e., body) of a module, this getter returns that
+      module object.
+    * The local scope (i.e., body) of a function, this getter returns that
+      function object.
+    * The class scope (i.e., body) of a class, this getter returns...
+      :data:`None`!?!?! Yes, it is true. Why? Because a class currently being
+      defined has yet to be defined until the body of that class has been
+      executed to completion.
 
     Parameters
     ----------
@@ -625,12 +664,15 @@ def get_frame_parent_object_or_none(frame: CallableFrameType) -> object:
     '''
     assert isinstance(frame, CallableFrameType), (
         f'{repr(frame)} not stack frame.')
+    # print(f'Getting {repr(frame)} parent object...')
 
+    # ....................{ IMPORTS                        }....................
     # Avoid circular import dependencies.
     from beartype._util.func.utilfunccodeobj import (
         get_code_object_basename_last)
     from beartype._util.module.utilmodget import get_module_imported_or_none
 
+    # ....................{ LOCALS                         }....................
     # Lexical parent object to be returned, initialized to "None".
     frame_parent_object: object = None
 
@@ -638,6 +680,7 @@ def get_frame_parent_object_or_none(frame: CallableFrameType) -> object:
     # scope is pure-Python *OR* "None" (e.g., if that scope is C-based).
     frame_codeobj = get_frame_code_object_or_none(frame)
 
+    # ....................{ INTROSPECT                     }....................
     # If it is *NOT* the case that either...
     if not (
         # This scope is not pure-Python *OR*...
@@ -649,11 +692,14 @@ def get_frame_parent_object_or_none(frame: CallableFrameType) -> object:
         # exists that corresponds to this call.
         is_frame_eval(frame)
     ):
-        # Then this scope is pure-Python *AND* this frame does *NOT* encapsulate
-        # an eval() or exec() call.
+    # Then this scope is pure-Python *AND* this frame does *NOT* encapsulate
+    # an eval() or exec() call. In this case...
+        # print('!!!in main "if"!!!')
 
+        # ....................{ MODULE                     }....................
         # If this frame encapsulates a module...
         if is_frame_module(frame):
+            # print('!!!in module!!!')
             # Fully-qualified name of this module if any *OR* "None" otherwise
             # (e.g., this module was dynamically defined in-memory).
             frame_module_name = get_frame_module_name_or_none(frame)
@@ -667,9 +713,13 @@ def get_frame_parent_object_or_none(frame: CallableFrameType) -> object:
             # Else, this module has *NO* fully-qualified name and thus *CANNOT*
             # be introspected by name from the standard "sys.modules" mapping.
             # In this case, silently reduce to a noop.
+
+        # ....................{ FUNC                       }....................
         # Else, this frame does *NOT* encapsulate a module, implying this frame
         # encapsulates either a class or callable. In either case..
         else:
+            # print('!!!in type or func!!!')
+
             # Last "."-delimited component of the unqualified basename of
             # this scope.
             frame_basename_last = get_code_object_basename_last(frame_codeobj)
@@ -706,9 +756,9 @@ def get_frame_parent_object_or_none(frame: CallableFrameType) -> object:
                     frame_basename_last.isidentifier()
                 )
             ):
-                # Global and local scopes encapsulated by this parent frame.
-                parent_frame_globals = get_frame_globals(parent_frame)
+                # Local and global scopes encapsulated by this parent frame.
                 parent_frame_locals = get_frame_locals(parent_frame)
+                parent_frame_globals = get_frame_globals(parent_frame)
 
                 # Parent class or callable to be returned, introspected by
                 # attempting to access this parent object as (in order) a local
@@ -721,6 +771,10 @@ def get_frame_parent_object_or_none(frame: CallableFrameType) -> object:
                 frame_parent_object = parent_frame_locals.get(
                     frame_basename_last, parent_frame_globals.get(
                     frame_basename_last))
+                # print(f'Parent func with basename "{frame_basename_last}": {frame_parent_object}')
+                # print(f'parent_frame_locals: {parent_frame_locals}')
+                # print(f'parent_frame_globals: {parent_frame_globals}')
+                # print()
             # Else, either this frame is already the top frame on the call stack
             # this scope has *NO* unqualified basename, or this scope has a
             # syntactically invalid unqualified basename. In any case, silently
@@ -728,6 +782,7 @@ def get_frame_parent_object_or_none(frame: CallableFrameType) -> object:
     # Then *NO* lexical parent object exists. In this case, silently reduce
     # to a noop.
 
+    # ....................{ RETURN                         }....................
     # Return this parent object.
     return frame_parent_object
 

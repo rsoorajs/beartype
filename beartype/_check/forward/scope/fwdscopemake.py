@@ -31,18 +31,24 @@ from beartype._data.typing.datatyping import (
 from beartype._util.cls.utilclsget import get_type_locals
 from beartype._util.func.utilfunccodeobj import get_func_code_object
 from beartype._util.func.utilfuncframe import (
+    GET_FRAME_CALLER_PARENT,
     find_frame_caller_external,
     get_frame_globals,
     get_frame_locals,
     get_frame_module_name_or_none,
+    get_frame_parent_object_or_none,
 )
 from beartype._util.func.utilfuncscope import (
     get_func_globals,
     get_func_locals_frame,
 )
-from beartype._util.hint.pep.proposal.pep695 import resolve_func_scope_pep695
+from beartype._util.hint.pep.proposal.pep695 import (
+    add_func_scope_hint_pep695_parameterizable_typeparams,
+    is_object_pep695_parameterizable,
+    resolve_func_scope_pep695,
+)
 from beartype._util.module.utilmodget import get_object_module_name
-from typing import Optional
+from collections.abc import Callable
 
 # ....................{ FACTORIES ~ caller                 }....................
 #FIXME: Unit test us up, please.
@@ -86,7 +92,7 @@ def make_scope_forward_caller_external(
     caller_frame = find_frame_caller_external(
         # Additionally ignore the current frame on the call stack encapsulating
         # the current call to this factory function.
-        ignore_frames=1,
+        ignore_frames=GET_FRAME_CALLER_PARENT,
         exception_cls=exception_cls,
         exception_prefix=exception_prefix,
     )
@@ -182,6 +188,7 @@ def make_scope_forward_decor_meta(
         f'{repr(decor_meta)} not beartype decorator call metadata.')
     assert isinstance(func_is_nested, bool), (
         f'{repr(func_is_nested)} not boolean.')
+    # print(f'Making forward scope for {repr(decor_meta.func)}...')
 
     # ....................{ PREAMBLE                       }....................
     # If the forward scope of the decorated callable has already been decided,
@@ -250,7 +257,17 @@ def make_scope_forward_decor_meta(
     # guarantees this attribute to be non-"None" and thus raise *NO* exception.
     func_module_name = get_object_module_name(func)
 
-    # ..................{ NESTED                             }..................
+    # Weak reference to the code object of the parent callable or type
+    # locally declaring the decorated callable if any *OR* "None", initialized
+    # to the latter.
+    func_local_parent_codeobj_weakref: WeakrefCallableType | None = None
+
+    # Parent callable if the decorated callable is locally declared inside a
+    # parent callable and is thus either a closure or non-closure nested
+    # function *OR* "None".
+    parent_func: Callable | None = None
+
+    # ..................{ SCOPE ~ locals                     }..................
     #FIXME: Shift this entire "if: ... else: ..." construct into a new private
     #_get_decor_meta_scope_forward_locals() getter for maintainability, please.
     # If the decorated callable is nested (rather than global) and thus *MAY*
@@ -315,7 +332,7 @@ def make_scope_forward_decor_meta(
                 # Why? Because the @beartype codebase has been sufficiently
                 # refactored so as to render any such attempts non-trivial,
                 # fragile, and frankly dangerous.
-                ignore_frames=1,
+                ignore_frames=GET_FRAME_CALLER_PARENT,
                 exception_cls=exception_cls,
             )
         # If this local scope cannot be found (i.e., if this getter found the
@@ -432,7 +449,27 @@ def make_scope_forward_decor_meta(
     else:
         func_locals = FROZENDICT_EMPTY
 
-    # ..................{ SCOPE                              }..................
+    # ..................{ SCOPE ~ parent                     }..................
+    # If the decorated callable is locally declared by some parent callable
+    # (e.g., is a closure) or type (e.g., is a method)...
+    if func_locals_frame is not None:
+        # Weak reference to the code object of that parent callable or type.
+        func_local_parent_codeobj_weakref = WeakrefCallableType(
+            get_func_code_object(func_locals_frame))
+
+        # Either:
+        # * If the decorated callable is locally declared by a parent callable
+        #   and is thus either a closure or non-closure nested function, that
+        #   parent callable.
+        # * If the decorated callable is a method of a parent type, "None".
+        # * If the decorated callable is a global function, this "if"
+        #   conditional would have never been entered... but this "if"
+        #   conditional was clearly entered. Ergo, the decorated callable is
+        #   *NOT* a global function.
+        parent_func = get_frame_parent_object_or_none(func_locals_frame)  # type: ignore[assignment]
+    # Else, the decorated callable is a global function.
+
+    # ..................{ SCOPE ~ forward                    }..................
     # Forward scope compositing this global and local scope of the decorated
     # callable as well as dynamically replacing each unresolved attribute of
     # each stringified type hint with a forward reference proxy resolving that
@@ -456,27 +493,60 @@ def make_scope_forward_decor_meta(
     #     class MuhGeneric(Generic[T]): ...
     func_scope = decor_meta.func_scope_forward = BeartypeForwardScope(
         scope_name=func_module_name,
-
-        # Weak reference to the code object of the parent callable or type
-        # locally declaring the decorated callable if any *OR* "None".
-        func_local_parent_codeobj_weakref=(
-            WeakrefCallableType(get_func_code_object(func_locals_frame))
-            if func_locals_frame is not None else
-            None
-        ),
+        func_local_parent_codeobj_weakref=func_local_parent_codeobj_weakref,
     )
 
-    # Composite this global and local scope into this forward scope (in that
-    # order), implicitly overwriting first each builtin attribute and then
-    # each global attribute previously copied into this forward scope with
-    # each global and then local attribute of the same name. Since locals
-    # *ALWAYS* assume precedence over globals *ALWAYS* assume precedence
-    # over builtins, order of operation is *EXTREMELY* significant here.
+    # ..................{ SCOPES ~ composite                 }..................
+    # Composite the scopes introspected above into this forward scope in the
+    # correct order. Order of operation is *EXTREMELY* significant here.
+
+    # Composite this global scope into this forward scope first, implicitly
+    # overwriting each builtin attribute previously copied into this forward
+    # scope with each global attribute of the same name. Globals *ALWAYS* assume
+    # precedence over builtins.
     func_scope.update(func_globals)
+    # print(f'func: {func}; parent_func: {parent_func}')
+
+    # If...
+    if (
+        # The decorated callable is locally declared by a parent callable and
+        # is thus either a closure or non-closure nested function *AND*...
+        parent_func is not None and
+        # The active Python interpreter targets Python >= 3.12 and thus supports
+        # PEP 695...
+        is_object_pep695_parameterizable(parent_func)
+    ):
+        # Then this parent callable may define a PEP 695-compliant type
+        # parameter scope (e.g., "[T]" in "def parent_callable[T](...) -> T:").
+        # If this is the case, composite this scope into this forward scope
+        # *AFTER* compositing all global attributes into this scope above but
+        # *BEFORE* compositing all local attributes into this scope below. Why?
+        # Because, with respect to the decorated callable, the type parameters
+        # implicitly defined by the type parameter scope of the parent callable
+        # are effectively local variables declared *BEFORE* any actual local
+        # variables are defined in the body of the parent callable. This
+        # intentional ordering enables:
+        # * Parent type parameters to correctly shadow globals.
+        # * Locals to correctly shadow parent type parameters.
+        add_func_scope_hint_pep695_parameterizable_typeparams(
+            func_scope=func_scope,
+            parameterizable=parent_func,
+            exception_cls=exception_cls,
+            exception_prefix=exception_prefix,
+        )
+        # print(f'Forward scope for {func} after parent PEP 695: {func_scope}\n\n')
+    # Else, either the decorated callable is not locally declared by a parent
+    # callable *OR* the active Python interpreter targets Python <= 3.11. In
+    # either case, *NO* parent callable defining a PEP 695-compliant type
+    # parameter scope exists.
+
+    # Composite this local scope into this forward scope next, implicitly
+    # overwriting first each global attribute previously copied into this
+    # forward scope with each local attribute of the same name. Locals *ALWAYS*
+    # assume precedence over globals.
     func_scope.update(func_locals)
     # print(f'Forward scope: {decor_metafunc_wrappee_wrappee_scope_forward}')
 
-    # ..................{ PEP 695                            }..................
     # If the decorated callable resides in one or more PEP 695-compliant type
     # parameter scopes, composite these scopes into this forward scope *AFTER*
     # compositing all local and global attributes into this scope above. Doing

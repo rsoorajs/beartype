@@ -4,9 +4,9 @@
 # See "LICENSE" for further details.
 
 '''
-**Beartype generic callable code data submodule.**
+Test-wide **callable source code utility** test data submodule.
 
-This submodule predefines low-level class constants exercising known edge cases
+This submodule predefines low-level class constants validating known edge cases
 on behalf of the higher-level
 :mod:`beartype_test.a00_unit.a20_util.func.test_utilfunccode` submodule. Unit
 tests defined in that submodule are sufficiently fragile that *no* other

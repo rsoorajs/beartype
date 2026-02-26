@@ -46,6 +46,7 @@ from beartype._data.typing.datatyping import (
 )
 from beartype._data.typing.datatypingport import Hint
 from beartype._util.func.utilfuncframe import (
+    GET_FRAME_CALLER_PARENT_PARENT,
     get_frame_or_none,
     get_frame_module_name_or_none,
     is_frame_beartype,
@@ -434,7 +435,8 @@ class BeartypeForwardScope(LexicalScope):
         #
         # Ergo, ignoring the first three stack frames on the current call stack
         # by passing "ignore_frames=2" yields the expected parent parent caller.
-        frame_caller = get_frame_or_none(ignore_frames=2)
+        frame_caller = get_frame_or_none(
+            ignore_frames=GET_FRAME_CALLER_PARENT_PARENT)
 
         # If either...
         if (

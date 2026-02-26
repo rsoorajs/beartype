@@ -76,13 +76,13 @@ def test_get_hint_pep695_parameterizable_typeparams() -> None:
 
         # Perform this test.
         unit_test_get_hint_pep695_parameterizable_typeparams()
+
+        # Assert this getter returns the empty tuple for pure-Python classes and
+        # functions that are *NOT* PEP 695-parametrized.
+        assert _get_hint_pep695_parameterizable_typeparams(Class) == ()
+        assert _get_hint_pep695_parameterizable_typeparams(function) == ()
     # Else, this interpreter targets Python < 3.12 and thus fails to support PEP
     # 695.
-
-    # Assert this getter returns the empty tuple for pure-Python classes and
-    # functions that are *NOT* PEP 695-parametrized.
-    assert _get_hint_pep695_parameterizable_typeparams(Class) == ()
-    assert _get_hint_pep695_parameterizable_typeparams(function) == ()
 
     # ....................{ FAIL                           }....................
     # Assert this getter raises the expected exception when passed an arbitrary

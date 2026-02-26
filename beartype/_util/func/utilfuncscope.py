@@ -134,14 +134,20 @@ def get_func_locals_frame(
     **kwargs
 ) -> tuple[LexicalScope, Optional[CallableFrameType]]:
     '''
-    **Local scope** (i.e., dictionary mapping from the name to value of each
-    locally scoped attribute declared by a parent callable or type transitively
-    declaring that callable) and associated **local stack frame** if the passed
-    callable is **nested** (i.e., is a method *or* is a non-method callable
-    declared in the body of another callable) *or* the empty dictionary and
-    :data:`None` otherwise (i.e., if that callable is a global function directly
-    declared by a module).
+    Safely mutable **local scope** (i.e., dictionary mapping from the name to
+    value of each locally scoped attribute declared by a parent callable or type
+    transitively declaring that callable) and associated **local stack frame**
+    if the passed callable is **nested** (i.e., is a method *or* is a non-method
+    callable declared in the body of another callable) *or* the empty dictionary
+    and :data:`None` otherwise (i.e., if that callable is a global function
+    directly declared by a module).
 
+    As a caller convenience, this getter intentionally returns a new mutable
+    dictionary rather than the immutable non-dictionary originally providing
+    this stack frame's global scope.
+
+    Caveats
+    -------
     **This getter transparently supports methods.** In Python, methods are
     lexically nested in the scope encapsulating all previously declared **class
     variables** (i.e., variables declared from class scope and thus accessible
@@ -363,6 +369,7 @@ def get_func_locals_frame(
     # Number of lexical scopes encapsulating that callable.
     func_scope_names_len = len(func_scope_names)
 
+    # ..................{ VALIDATE                           }..................
     # If that nested callable is *NOT* encapsulated by at least two lexical
     # scopes identifying at least that nested callable and the parent callable
     # or class declaring that nested callable, raise an exception.
@@ -451,6 +458,7 @@ def get_func_locals_frame(
         )
     # Else, there are one or more unignorable lexical scopes to be searched.
 
+    # ..................{ LOCALS ~ scope                     }..................
     # Unqualified basename of the parent callable or module directly lexically
     # containing the passed callable.
     #
@@ -465,11 +473,11 @@ def get_func_locals_frame(
     func_scope_name = func_scope_names[func_scope_names_index]
     # print(f'Searching for parent {func_scope_name}() local scope...')
 
-    # ..................{ SEARCH                             }..................
     # Stack frame on the current call stack embodying the parent callable or
     # type directly declaring this nested callable if any *OR* "None".
     func_frame: CallableFrameType | None = None
 
+    # ..................{ SEARCH                             }..................
     # While at least one frame remains on the call stack, iteratively search up
     # the call stack for a stack frame embodying the parent callable directly
     # declaring this nested callable, whereupon that parent callable's local
@@ -546,7 +554,6 @@ def get_func_locals_frame(
         # Ergo, we have *NO* alternative but to blindly assume the above
         # algorithm correctly collected this scope, which we only do because we
         # have exhaustively tested this with *ALL* edge cases.
-
             # Local scope of the passed callable. Since this nested callable is
             # directly declared in the body of this parent callable, the local
             # scope of this nested callable is *EXACTLY* the local scope of the
@@ -560,6 +567,7 @@ def get_func_locals_frame(
         # found. In this case, silently ignore that callable and proceed to the
         # next frame in the call stack.
 
+    # ..................{ RETURN                             }..................
     # Return the local scope of the passed callable.
     return func_scope, func_frame
 

@@ -17,6 +17,7 @@ typically have yet to be defined).
 # WARNING: To raise human-readable test errors, avoid importing from
 # package-specific submodules at module scope.
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+from beartype_test._util.mark.pytskip import skip_if_python_version_less_than
 
 # ....................{ TESTS                              }....................
 def test_pep484_ref_decor_data() -> None:
@@ -329,6 +330,31 @@ def test_pep484_ref_decor_relative_type_nested() -> None:
     # of instances of that nested type raises the expected exception.
     with raises_uncached(BeartypeCallHintParamViolation):
         accept_list_vast_and_muscular([LikeALitheSerpent(),])
+
+# ....................{ TESTS ~ relative : type : nested   }....................
+@skip_if_python_version_less_than('3.12.0')
+def test_pep484_ref_decor_pep695() -> None:
+    '''
+    Test :func:`beartype.beartype`-decorated callables accepting one or more
+    parameters annotated by :pep:`484`-compliant stringified forward reference
+    type hints referring to :pep:`695`-compliant type parameter scopes if the
+    active Python interpreter targets Python >= 3.12 and thus supports
+    :pep:`695` *or* reduce to a noop otherwise.
+    '''
+
+    # ..................{ IMPORTS                            }..................
+    # Defer test-specific imports.
+    from beartype_test.a00_unit.data.pep.pep484.forward.data_pep484ref_decor_pep695 import (
+        suddenly_on,
+    )
+
+    # ..................{ PASS                               }..................
+    # Assert that calling this PEP 695-parametrized closure factory with valid
+    # parameters returns the expected closure.
+    WHEREON_HE_RODE = "Suddenly on the ocean's chilly streams."
+    planet_orb_of_fire = suddenly_on(WHEREON_HE_RODE)
+    assert callable(planet_orb_of_fire)
+    assert planet_orb_of_fire() is WHEREON_HE_RODE
 
 # ....................{ TESTS ~ fail                       }....................
 def test_pep484_ref_decor_fail() -> None:

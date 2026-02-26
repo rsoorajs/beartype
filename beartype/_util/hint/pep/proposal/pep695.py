@@ -113,7 +113,10 @@ from beartype._cave._cavemap import NoneTypeOr
 from beartype._check.forward.reference.fwdrefmake import (
     make_forwardref_subbable_subtype)
 from beartype._check.forward.reference.fwdrefmeta import BeartypeForwardRefMeta
-from beartype._data.typing.datatypingport import Hint
+from beartype._data.typing.datatypingport import (
+    Hint,
+    TypeIs,
+)
 from beartype._data.typing.datatyping import (
     LexicalScope,
     Pep695Parameterizable,
@@ -140,6 +143,45 @@ from collections.abc import (
 from typing import Optional
 
 # ....................{ TESTERS                            }....................
+#FIXME: Unit test us up, please. *sigh*
+def is_object_pep695_parameterizable(
+    obj: object) -> TypeIs[Pep695Parameterizable]:
+    '''
+    :data:`True` only if the passed object is :pep:`695`-compliant
+    **parameterizable** (i.e., object that may be parametrized by
+    :pep:`695`-compliant lists of one or more implicitly instantiated
+    :pep:`484`-compliant type variables, pep:`612`-compliant parameter
+    specifications, or :pep:`646`-compliant type variable tuples).
+
+    This tester returns :data:`True` if and only if the active Python
+    interpreter targets Python >= 3.12 (and thus supports :pep:` 695`) *and*
+    this object is either:
+
+    * A pure-Python class.
+    * A pure-Python function.
+    * A :pep:`695`-compliant type alias.
+
+    Parameters
+    ----------
+    obj : object
+        Object to be tested.
+
+    Returns
+    -------
+    bool
+        :data:`True` only if this object is :pep:`695`-parameterizable.
+    '''
+
+    # Return true only if...
+    return (
+        # The active Python interpreter targets Python >= 3.12 and thus supports
+        # PEP 695 *AND*...
+        IS_PYTHON_AT_LEAST_3_12 and
+        # This object is a PEP 695-compliant parametrizable.
+        isinstance(obj, Pep695ParameterizableTypes)
+    )
+
+
 def is_hint_pep695_subbed(hint: Hint) -> bool:
     '''
     :data:`True` only if the passed type hint is a :pep:`695`-compliant
@@ -365,6 +407,7 @@ def add_func_scope_hint_pep695_parameterizable_typeparams(
         exception_prefix=exception_prefix,
     )
     # print(f'Adding PEP 695 parameterizable {repr(parameterizable)} type parameters {repr(typeparams)}...')
+    # print(f'...to scope: {repr(func_scope)}')
 
     # ....................{ LOOP                           }....................
     # For each type parameter parametrizing this parameterizable...
@@ -456,7 +499,7 @@ def _get_hint_pep695_parameterizable_typeparams(
     '''
 
     # If this object is *NOT* parameterizable under PEP 695, raise an exception.
-    if not isinstance(parameterizable, Pep695ParameterizableTypes):
+    if not is_object_pep695_parameterizable(parameterizable):
         raise exception_cls(
             f'{exception_prefix}'
             f'{repr(parameterizable)} not PEP 695-parameterizable '
@@ -575,6 +618,10 @@ def resolve_func_scope_pep695(
     # If the decorated callable is a pure-Python function, this function
     # unconditionally supports PEP 695-compliant type parametrization under
     # Python >= 3.12. In this case...
+    #
+    # Note that the decorated callable is *ALMOST* always a pure-Python
+    # function. Ergo, there's no particular benefit to micro-optimizing this
+    # when the decorated callable is *NOT* a pure-Python function above.
     if is_func_python(func):
         # Composite all PEP 695-compliant type parameters parametrizing the
         # decorated callable into this forward scope.
