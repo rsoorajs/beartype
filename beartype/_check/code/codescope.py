@@ -78,7 +78,7 @@ def add_hints_meta_scope_type_or_types(
     # Defer to the lower-level add_func_scope_type_or_types() adder.
     return add_func_scope_type_or_types(
         type_or_types=type_or_types,
-        func_scope=hints_meta.func_wrapper_scope,
+        func_scope=hints_meta.func_wrapper_locals,
         exception_prefix=EXCEPTION_PREFIX_FUNC_WRAPPER_LOCAL,
     )
 

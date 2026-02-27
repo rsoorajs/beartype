@@ -187,7 +187,6 @@ def test_get_hint_pep484585_generic_base_extrinsic_sign_or_none() -> None:
     #
     #     generic_item: T
 
-
     #FIXME: Nice, but currently unused.
     # class GenericTypedDict(TypedDict, Generic[T]):
     #     '''

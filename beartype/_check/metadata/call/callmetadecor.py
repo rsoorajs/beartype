@@ -203,7 +203,7 @@ class BeartypeCallDecorMeta(BeartypeCallDecorMinimalMeta):
         Unqualified basename of the type-checking wrapper function to be
         generated and returned by the current invocation of the
         :func:`beartype.beartype` decorator.
-    func_wrapper_scope : LexicalScope
+    func_wrapper_locals : LexicalScope
         **Local scope** (i.e., dictionary mapping from the name to value of
         each attribute referenced in the signature) of this wrapper function.
     '''
@@ -224,7 +224,7 @@ class BeartypeCallDecorMeta(BeartypeCallDecorMinimalMeta):
         'func_wrapper_code_return_unchecked',
         'func_wrapper_code_signature_prefix',
         'func_wrapper_name',
-        'func_wrapper_scope',
+        'func_wrapper_locals',
         '_is_func_annotations_dirty',
     )
 
@@ -242,7 +242,7 @@ class BeartypeCallDecorMeta(BeartypeCallDecorMinimalMeta):
         func_wrapper_code_return_unchecked: str
         func_wrapper_code_signature_prefix: str
         func_wrapper_name: str
-        func_wrapper_scope: LexicalScope
+        func_wrapper_locals: LexicalScope
         _is_func_annotations_dirty: bool
 
     # ..................{ INITIALIZERS                       }..................
@@ -296,7 +296,7 @@ class BeartypeCallDecorMeta(BeartypeCallDecorMinimalMeta):
 
         # Empty the set of all hidden parameters required by this type-checking
         # wrapper function.
-        self.func_wrapper_scope: LexicalScope = {}
+        self.func_wrapper_locals: LexicalScope = {}
         self._is_func_annotations_dirty = False
 
         # Default the same code snippets set by the reinit() method to those

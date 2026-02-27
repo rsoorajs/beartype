@@ -39,6 +39,7 @@ from beartype._check.forward.reference.fwdrefabc import (
     BeartypeForwardRefSubbableABC)
 from beartype._check.forward.reference.fwdrefmake import (
     make_forwardref_subbable_subtype)
+from beartype._data.py.databuiltins import BUILTIN_NAME_TO_VALUE
 from beartype._data.typing.datatyping import (
     FuncLocalParentCodeObjectWeakref,
     LexicalScope,
@@ -56,7 +57,6 @@ from beartype._util.func.utilfuncframe import (
 from beartype._util.kind.maplike.utilmapset import (
     remove_mapping_keys_except)
 from beartype._util.text.utiltextidentifier import die_unless_identifier
-from builtins import __dict__ as scope_builtins  # type: ignore[attr-defined]
 from typing import TYPE_CHECKING
 
 # ....................{ SUPERCLASSES                       }....................
@@ -157,7 +157,7 @@ class BeartypeForwardScope(LexicalScope):
         func_local_parent_codeobj_weakref: FuncLocalParentCodeObjectWeakref = (
             None),
         is_beartype_test_beartype: bool = False,
-        scope_dict: LexicalScope = scope_builtins,
+        scope_dict: LexicalScope = BUILTIN_NAME_TO_VALUE,
     ) -> None:
         '''
         Initialize this forward scope to the immutable dictionary of all

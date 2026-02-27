@@ -148,7 +148,7 @@ def generate_code(decor_meta: BeartypeCallDecorMeta) -> str:
     # ....................{ SCOPE                          }....................
     # Dictionary mapping from the name to value of each attribute referenced in
     # the signature of this wrapper function, localized merely for readability.
-    func_scope = decor_meta.func_wrapper_scope
+    func_scope = decor_meta.func_wrapper_locals
 
     # Expose the minimal metadata required by each call to this wrapper function
     # as a beartype-specific hidden parameter passed to this wrapper function,

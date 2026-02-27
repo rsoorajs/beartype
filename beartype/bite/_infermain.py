@@ -17,21 +17,17 @@ from beartype.bite.collection.infercollectionbuiltin import (
 from beartype.bite.collection.infercollectionsabc import (
     infer_hint_collections_abc)
 from beartype.roar import BeartypeDoorInferHintRecursionWarning
-from beartype.typing import (
-    Callable,
-    Optional,
-    Tuple,
-    Type,
-)
 from beartype._conf.confmain import BeartypeConf
 from beartype._conf.confcommon import get_beartype_conf_strategy_on
 from beartype._conf.conftest import die_unless_conf
-from beartype._data.cls.datacls import TYPES_BUILTIN_SCALAR
+from beartype._data.py.databuiltins import BUILTIN_TYPES_SCALAR
 from beartype._data.typing.datatyping import FrozenSetInts
 from beartype._data.kind.datakindset import FROZENSET_EMPTY
 from beartype._util.error.utilerrwarn import issue_warning
 from beartype._util.hint.pep.utilpeptest import is_hint_pep
 from beartype._util.text.utiltextrepr import represent_object
+from collections.abc import Callable
+from typing import Optional
 
 # ....................{ CLASSES                            }....................
 class BeartypeInferHintContainerRecursion(object):
@@ -235,7 +231,7 @@ def infer_hint(
     # If this object is a type, this type is trivially satisfied by a PEP 484-
     # or 585-compliant subclass type hint subscripted by this type.
     elif isinstance(obj, type):
-        return Type[obj]
+        return type[obj]
     # Else, this object is *NOT* a type.
     #
     # If this object is callable, defer to this lower-level function inferring a
@@ -257,7 +253,7 @@ def infer_hint(
     # recursive "collections.abc.Sequence[str]" type hint, which they otherwise
     # would be. Since strings are infinitely recursively immutable sequences of
     # immutable sequences, this detection avoids *INSANE* infinite recursion.
-    if obj_type in TYPES_BUILTIN_SCALAR:
+    if obj_type in BUILTIN_TYPES_SCALAR:
         return obj_type
     # Else, this object is *NOT* a builtin scalar.
 
@@ -289,7 +285,7 @@ def infer_hint(
     return obj_type
 
 # ....................{ PRIVATE ~ constants                }....................
-_HINT_INFERERS: Tuple[Callable, ...] = (
+_HINT_INFERERS: tuple[Callable, ...] = (
     # Builtin collections should typically (but *NOT* always, interestingly) be
     # annotated as builtin collection type hints. For example:
     # * Lists satisfy the "collections.abc.MutableSequence" protocol, but are

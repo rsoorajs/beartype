@@ -349,7 +349,7 @@ def code_check_args(decor_meta: BeartypeCallDecorMeta) -> str:
 
                 # Merge the local scope required to check this parameter into
                 # the local scope required by the current wrapper function.
-                update_mapping(decor_meta.func_wrapper_scope, func_scope)
+                update_mapping(decor_meta.func_wrapper_locals, func_scope)
 
             # If one or more warnings were issued, reissue these warnings with
             # each placeholder substring (i.e., "EXCEPTION_PLACEHOLDER"
@@ -390,7 +390,7 @@ def code_check_args(decor_meta: BeartypeCallDecorMeta) -> str:
     # the set of the names of all keywordable parameters to this wrapper
     # function needed to type-check that annotated variadic keyword parameter.
     if args_name_keywordable is not None:
-        decor_meta.func_wrapper_scope[ARG_NAME_ARGS_NAME_KEYWORDABLE] = (
+        decor_meta.func_wrapper_locals[ARG_NAME_ARGS_NAME_KEYWORDABLE] = (
             args_name_keywordable)
     # Else, that callable accepts *NO* annotated variadic parameter.
 

@@ -1170,7 +1170,7 @@ def make_check_expr(
                         # both this validator code *AND* the current code
                         # type-checking this entire root hint.
                         update_mapping(
-                            mapping_trg=hints_meta.func_wrapper_scope,
+                            mapping_trg=hints_meta.func_wrapper_locals,
                             mapping_src=hint_child._is_valid_code_locals,
                         )
 
@@ -1298,7 +1298,7 @@ def make_check_expr(
                             # Python expression evaluating to this object.
                             hint_child_expr=add_func_scope_attr(
                                 attr=hint_child,
-                                func_scope=hints_meta.func_wrapper_scope,
+                                func_scope=hints_meta.func_wrapper_locals,
                                 exception_prefix=(
                                     EXCEPTION_PREFIX_FUNC_WRAPPER_LOCAL),
                             ),
@@ -1445,7 +1445,7 @@ def make_check_expr(
     # parameter to this wrapper function exposing the random.getrandbits()
     # function required to generate this integer.
     if hints_meta.is_var_random_int_needed:
-        hints_meta.func_wrapper_scope[ARG_NAME_GETRANDBITS] = getrandbits
+        hints_meta.func_wrapper_locals[ARG_NAME_GETRANDBITS] = getrandbits
     # Else, type-checking this hint requires *NO* pseudo-random integer.
 
     # ..................{ CACHE                              }..................
@@ -1460,7 +1460,7 @@ def make_check_expr(
         # different callers. Freezing this dictionary slightly reduces
         # efficiency (which is slightly bad) but *DRAMATICALLY* eliminates
         # otherwise impossible to debug memoization issues. Debugging wins! \o/
-        FrozenDict(hints_meta.func_wrapper_scope),
+        FrozenDict(hints_meta.func_wrapper_locals),
     )
 
     # If this expression is safely memoizable into this cache, do so.
@@ -1474,7 +1474,7 @@ def make_check_expr(
     release_instance(hints_meta)
 
     # Return this expression and associated metadata.
-    # print(f'func_wrapper_scope: {hints_meta.func_wrapper_scope}')
+    # print(f'func_wrapper_locals: {hints_meta.func_wrapper_locals}')
     return check_expr
 
 # ....................{ PRIVATE ~ globals                  }....................

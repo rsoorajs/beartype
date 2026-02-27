@@ -13,12 +13,12 @@ This private submodule is *not* intended for importation by downstream callers.
 # ....................{ IMPORTS                            }....................
 from beartype.roar._roarexc import _BeartypeUtilTypeException
 from beartype._cave._cavefast import TestableTypes as TestableTypesTuple
-from beartype._data.cls.datacls import TYPES_BUILTIN
+from beartype._data.py.databuiltins import BUILTIN_TYPES
 from beartype._data.typing.datatyping import (
     TypeException,
     TypeOrTupleTypes,
 )
-from beartype._data.api.standard.datapy import BUILTINS_MODULE_NAME
+from beartype._data.py.databuiltins import BUILTINS_MODULE_NAME
 
 # ....................{ RAISERS                            }....................
 def die_unless_type(
@@ -192,7 +192,7 @@ def is_type_builtin(cls: type) -> bool:
     '''
 
     # Return true only if this is a builtin type.
-    return cls in TYPES_BUILTIN
+    return cls in BUILTIN_TYPES
 
 
 def is_type_builtin_or_fake(cls: type) -> bool:

@@ -132,7 +132,7 @@ class HintsMeta(FixedList):
           code snippet type-checking the current pith against this hint.
         * If the currently visited hint is only shallowly type-checkable,
           :data:`None`.
-    func_wrapper_scope : LexicalScope
+    func_wrapper_locals : LexicalScope
         **Local scope** (i.e., dictionary mapping from the name to value of each
         attribute referenced in the signature) of this wrapper function required
         by this Python code snippet.
@@ -215,7 +215,7 @@ class HintsMeta(FixedList):
         'conf',
         'exception_prefix',
         'func_curr_code',
-        'func_wrapper_scope',
+        'func_wrapper_locals',
         'hint_curr_expr',
         'hint_curr_meta',
         'indent_child',
@@ -237,7 +237,7 @@ class HintsMeta(FixedList):
         conf: BeartypeConf
         exception_prefix: str
         func_curr_code: str
-        func_wrapper_scope: LexicalScope
+        func_wrapper_locals: LexicalScope
         hint_curr_expr : Optional[str]
         hint_curr_meta : HintMeta
         indent_curr: str
@@ -284,7 +284,7 @@ class HintsMeta(FixedList):
         self.indent_level_child = 1
 
         # Restore instance variables to initial defaults.
-        self.func_wrapper_scope = {}
+        self.func_wrapper_locals = {}
         self.is_var_random_int_needed = False
         self.pith_curr_var_name_index = 0
 
@@ -512,16 +512,16 @@ class HintsMeta(FixedList):
               *other* than the standard sign returned by the
               :func:`.get_hint_pep_sign_or_none` getter), this sign.
             * Else, the sentinel placeholder, in which case this parameter
-              defaults to the **default sign** (i.e., the standard sign returned
-              by the :func:`.get_hint_pep_sign_or_none` getter).
+              defaults to their **default sign** (i.e., the sign returned by the
+              :func:`.get_hint_pep_sign_or_none` getter).
 
             Defaults to the sentinel placeholder. This parameter should
             typically *not* be passed. Almost all hints are uniquely identified
-            by the default sign. A small subset of hints, however, concurrently
-            satisfy the detection criteria for multiple signs and are thus
-            identifiable with multiple signs. This parameter supports those
-            hints by enabling callers to call this method multiple times with
-            the same hint passed different signs.
+            by their default sign. A small subset of hints, however,
+            concurrently satisfy the detection criteria for multiple signs and
+            are thus identifiable with multiple signs. This parameter supports
+            those hints by enabling callers to call this method multiple times
+            with the same hint passed different signs.
 
             Prominent examples include:
 

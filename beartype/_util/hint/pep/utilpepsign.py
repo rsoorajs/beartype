@@ -101,10 +101,6 @@ This private submodule is *not* intended for importation by downstream callers.
 
 # ....................{ IMPORTS                            }....................
 from beartype.roar import BeartypeDecorHintPepSignException
-from beartype.typing import (
-    Dict,
-    Optional,
-)
 from beartype._cave._cavefast import CallableOrClassTypes
 from beartype._data.typing.datatypingport import Hint
 from beartype._data.typing.datatyping import TypeException
@@ -146,7 +142,8 @@ from beartype._util.hint.pep.proposal.pep646692 import (
     is_hint_pep646_tuple_unpacked_prefix,
 )
 from beartype._util.hint.pep.proposal.pep695 import is_hint_pep695_subbed
-from collections.abc import Callable as CallableABC
+from collections.abc import Callable
+from typing import Optional
 
 # ....................{ GETTERS ~ unambiguous              }....................
 def get_hint_pep_sign(
@@ -743,11 +740,12 @@ def get_hint_pep_sign_ambiguous_or_none(hint: Hint) -> Optional[HintSign]:
 
     # Return "None", informing the caller that this is an isinstanceable type.
     return None
+
 # ....................{ PRIVATE ~ globals                  }....................
 # Note this dictionary requires callables defined by the submodules of the
 # "beartype._util.hint.pep.proposal" subpackage and thus *CANNOT* be moved into
 # the "beartype._data.hint.sign.datahintsignmap" submodule.
-_HINT_SIGN_AMBIGUOUS_TO_DISAMBIGUATOR: Dict[Optional[HintSign], CallableABC] = {
+_HINT_SIGN_AMBIGUOUS_TO_DISAMBIGUATOR: dict[Optional[HintSign], Callable] = {
     # ....................{ PEP (484|585|646)              }....................
     # Disambiguate PEP 484- and 585-compliant tuple hints from PEP 646-compliant
     # tuple hints.
@@ -764,5 +762,3 @@ only a single kind of hint like most signs do) to that sign's **disambiguator**
 (i.e., lower-level function accepting a hint identified by this ambiguous sign
 and returning a different sign unambiguously identifying this hint).
 '''
-
-# ....................{ PRIVATE ~ getters                  }....................

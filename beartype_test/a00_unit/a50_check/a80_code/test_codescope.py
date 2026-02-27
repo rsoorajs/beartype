@@ -283,7 +283,7 @@ def test_add_func_scope_types() -> None:
 #
 #     # ....................{ LOCALS                         }....................
 #     # Lexical scope to be added to below.
-#     func_wrapper_scope = {}
+#     func_wrapper_locals = {}
 #
 #     # Set of the unqualified classnames referred to by all relative forward
 #     # references relative to this scope if any *OR* "None" otherwise (i.e., if
@@ -316,7 +316,7 @@ def test_add_func_scope_types() -> None:
 #
 #     # ....................{ CALLABLES                      }....................
 #     def _make_hints_meta(
-#         func_wrapper_scope: LexicalScope,
+#         func_wrapper_locals: LexicalScope,
 #         hint_refs_type_basename: Optional[set],
 #     ) -> HintsMeta:
 #         '''
@@ -328,7 +328,7 @@ def test_add_func_scope_types() -> None:
 #
 #         Parameters
 #         ----------
-#         func_wrapper_scope : LexicalScope
+#         func_wrapper_locals : LexicalScope
 #             Local or global scope to add this forward reference to.
 #         hint_refs_type_basename : Optional[set]
 #             Set of all existing **relative forward references** (i.e.,
@@ -342,7 +342,7 @@ def test_add_func_scope_types() -> None:
 #         hints_meta = HintsMeta()
 #
 #         # Initialize this queue by the passed parameters.
-#         hints_meta.func_wrapper_scope = func_wrapper_scope
+#         hints_meta.func_wrapper_locals = func_wrapper_locals
 #         hints_meta.hint_refs_type_basename = hint_refs_type_basename
 #
 #         # Return this queue.
@@ -353,7 +353,7 @@ def test_add_func_scope_types() -> None:
 #     for forwardref_qualified in FORWARDREFS_QUALIFIED:
 #         # Type-checking metadata queue storing this reference.
 #         hints_meta = _make_hints_meta(
-#             func_wrapper_scope=func_wrapper_scope,
+#             func_wrapper_locals=func_wrapper_locals,
 #             hint_refs_type_basename=hint_refs_type_basename,
 #         )
 #
@@ -365,7 +365,7 @@ def test_add_func_scope_types() -> None:
 #         assert hints_meta.hint_refs_type_basename is None
 #
 #         # Forward reference proxy added to this scope by the above call.
-#         forwardref = func_wrapper_scope[forwardref_expr]
+#         forwardref = func_wrapper_locals[forwardref_expr]
 #
 #         # Assert this proxy encapsulates this forward reference.
 #         assert CLASSNAME_QUALIFIED in repr(forwardref)
@@ -373,7 +373,7 @@ def test_add_func_scope_types() -> None:
 #         # Assert this function rexpresses the same forward reference.
 #         forwardref_expr_again = express_hints_meta_scope_type_ref(
 #             hints_meta=_make_hints_meta(
-#                 func_wrapper_scope=func_wrapper_scope,
+#                 func_wrapper_locals=func_wrapper_locals,
 #                 hint_refs_type_basename=hint_refs_type_basename,
 #             ),
 #             hint=forwardref_qualified,
@@ -384,7 +384,7 @@ def test_add_func_scope_types() -> None:
 #     for forwardref_unqualified in FORWARDREFS_UNQUALIFIED:
 #         # Type-checking metadata queue storing this reference.
 #         hints_meta = _make_hints_meta(
-#             func_wrapper_scope=func_wrapper_scope,
+#             func_wrapper_locals=func_wrapper_locals,
 #             hint_refs_type_basename=hint_refs_type_basename,
 #         )
 #
@@ -401,7 +401,7 @@ def test_add_func_scope_types() -> None:
 #         # Assert this function rexpresses the same forward reference.
 #         forwardref_expr_again = express_hints_meta_scope_type_ref(
 #             hints_meta=_make_hints_meta(
-#                 func_wrapper_scope=func_wrapper_scope,
+#                 func_wrapper_locals=func_wrapper_locals,
 #                 hint_refs_type_basename=hint_refs_type_basename,
 #             ),
 #             hint=forwardref_unqualified,
@@ -415,7 +415,7 @@ def test_add_func_scope_types() -> None:
 #         express_hints_meta_scope_type_ref(
 #             hints_meta=_make_hints_meta(
 #                 hint_refs_type_basename=hint_refs_type_basename,
-#                 func_wrapper_scope=func_wrapper_scope,
+#                 func_wrapper_locals=func_wrapper_locals,
 #             ),
 #             hint=b'The chainless winds still come and ever came',
 #         )

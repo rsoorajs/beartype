@@ -967,7 +967,7 @@ Frozen set of both pure-Python *and* C-based callables exercising edge cases.
 # '''
 
 # ....................{ SETS ~ type : builtin              }....................
-TYPES_BUILTIN = frozenset((
+BUILTIN_TYPES = frozenset((
     bool,
     complex,
     dict,
@@ -1016,7 +1016,7 @@ def _init() -> None:
 
     # Defer initialization-specific imports.
     import builtins, types
-    from beartype._data.api.standard.datapy import BUILTINS_MODULE_NAME
+    from beartype._data.py.databuiltins import BUILTINS_MODULE_NAME
     from beartype._util.utilobject import get_object_type_unless_type
 
     # Global variables assigned to below.
