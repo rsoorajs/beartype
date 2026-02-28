@@ -46,7 +46,7 @@ unhelpful attributes.
 This dictionary intentionally excludes:
 
 * **Fake builtin types** (i.e., types that are *not* builtin but nonetheless
-  erroneously masquerade as being builtin, including the type of the
+  erroneously masquerade as being builtin, infamously including the type of the
   :data:`None` singleton).
 * **Dunder attributes** (i.e., attributes whose unqualified basenames are both
   prefixed and suffixed by ``"__"`` delimiters).
@@ -114,6 +114,21 @@ BUILTINS_MODULE_NAME = 'builtins'
 Fully-qualified name of the **builtins module** (i.e., objects defined by the
 standard :mod:`builtins` module and thus globally available by default
 *without* requiring explicit importation).
+'''
+
+
+GLOBAL_SCOPE_BUILTINS_BASENAME = '__builtins__'
+'''
+Unqualified basename of the standard dunder attribute whose value is expected to
+be a **builtins lexical scope** (i.e., dictionary mapping from the unqualified
+basename to value of an attribute globally accessible from all possible scopes
+*without* needing to be explicitly imported into either the current local or
+global scope).
+
+When Python fails to find an accessed attribute in either the current local or
+global scope *and* that global scope defines a global attribute by this
+basename, Python falls back to accessing that attribute from that global
+attribute whose value is this builtins lexical scope instead.
 '''
 
 # ....................{ PRIVATE ~ init                     }....................

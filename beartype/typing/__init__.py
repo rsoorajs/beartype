@@ -99,8 +99,13 @@ this submodule rather than from :mod:`typing` directly: e.g.,
 #    # dependency. This is the only rule in @beartype's Rule of Law.
 #    else:
 #        #FIXME: Unfortunately, to avoid circular import dependencies, these
-#        #imports will need to be copy-and-pasted into equivalent condensed
-#        #submodules of a new "beartype.typing._util" subpackage.
+#        #imports will need to be:
+#        #* Moved into equivalent condensed submodules of a new
+#        #  "beartype.typing._util" subpackage.
+#        #* The original attributes in the "beartype._util" subpackage should
+#        #  then quietly alias their new location in the "beartype.typing._util"
+#        #  subpackage.
+#
 #        # Import the requisite machinery that will make the magic happen.
 #        from beartype._util.hint.utilhintfactory import TypeHintTypeFactory
 #        from beartype._util.api.standard.utiltyping import (
@@ -120,28 +125,6 @@ this submodule rather than from :mod:`typing` directly: e.g.,
 #        Annotated = _import_typing_attr_or_fallback('Annotated', bool)
 #
 #        #FIXME: Repeat the above logic for *ALL* existing "typing" attributes.
-#FIXME: Actually, ain't nobody got time for that at the moment. The low-hanging
-#fruit here is to just trivially alias this submodule to the "typing" module
-#like so:
-#    from typing import *
-#
-#Then:
-#* Remove almost *ALL* of this submodule.
-#* Conditionally redefine various attributes (e.g., deprecated PEP 484 stuff,
-#  slow "Protocol" superclass) as needed.
-#
-#This has the dramatic improvement of innately synchronizing this submodule,
-#which has become a *NIGHTMARE* to maintain, against the official
-#implementation. Python 3.14 @beartype users hit this when early release
-#candidates of Python 3.14 removed "typing.ByteString", only for the final
-#release of Python 3.14 to add it back. @beartype then began raising exceptions
-#on importation. Since "typing" is a moving target nightmare, exposing ourselves
-#to that nightmare no longer makes sense at all.
-#
-#The only possible issue might be mypy and pyright. If either complain, we'll
-#have no choice but to eventually *DEPRECATE* this entire submodule -- probably
-#in the run up to @beartype 1.0.0. Ugly stuff, but inviting synchronization woes
-#is even uglier.
 
 # ....................{ IMPORTS                            }....................
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -154,19 +137,6 @@ this submodule rather than from :mod:`typing` directly: e.g.,
 # import machinery rather than non-standard dynamic import shenanigans (e.g.,
 # "from typing import Annotated" rather than
 # "import_typing_attr_or_none('Annotated')").
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-from beartype._util.py.utilpyversion import (
-    IS_PYTHON_AT_MOST_3_16  as _IS_PYTHON_AT_MOST_3_16,
-    IS_PYTHON_AT_MOST_3_15  as _IS_PYTHON_AT_MOST_3_15,
-    IS_PYTHON_AT_MOST_3_13  as _IS_PYTHON_AT_MOST_3_13,
-    IS_PYTHON_AT_LEAST_3_14 as _IS_PYTHON_AT_LEAST_3_14,
-    IS_PYTHON_AT_LEAST_3_13 as _IS_PYTHON_AT_LEAST_3_13,
-    IS_PYTHON_AT_LEAST_3_12 as _IS_PYTHON_AT_LEAST_3_12,
-    IS_PYTHON_AT_LEAST_3_11 as _IS_PYTHON_AT_LEAST_3_11,
-)
-
-# ....................{ IMPORTS ~ all                      }....................
-#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # WARNING: To prevent "mypy --no-implicit-reexport" from raising literally
 # hundreds of errors at static analysis time, *ALL* public attributes *MUST* be
 # explicitly reimported under the same names with "{exception_name} as
@@ -177,160 +147,28 @@ from beartype._util.py.utilpyversion import (
 #     implicit reexport disabled  [attr-defined]
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-# Import all public attributes of the "typing" module both available under all
-# supported Python versions and *NOT* deprecated by a subsequent Python version
-# under their original names.
-from typing import (
-    TYPE_CHECKING as TYPE_CHECKING,
-    Any as Any,
-    Annotated as Annotated,
-    BinaryIO as BinaryIO,
-    ClassVar as ClassVar,
-    Concatenate as Concatenate,  # pyright: ignore
-    Final as Final,  # pyright: ignore
-    ForwardRef as ForwardRef,
-    Generic as Generic,
-    IO as IO,
-    Literal as Literal,  # pyright: ignore
-    NewType as NewType,
-    NamedTuple as NamedTuple,
-    NoReturn as NoReturn,
-    Optional as Optional,
-    ParamSpec as ParamSpec,  # pyright: ignore
-    ParamSpecArgs as ParamSpecArgs,  # pyright: ignore
-    ParamSpecKwargs as ParamSpecKwargs,  # pyright: ignore
-    Reversible as Reversible,  # pyright: ignore
-    TypedDict as TypedDict,  # pyright: ignore
-    Text as Text,
-    TextIO as TextIO,
-    TypeAlias as TypeAlias,  # pyright: ignore
-    TypeGuard as TypeGuard,  # pyright: ignore
-    TypeVar as TypeVar,
-    Union as Union,
-    cast as cast,
-    final as final,  # pyright: ignore
-    get_args as get_args,  # pyright: ignore
-    get_origin as get_origin,  # pyright: ignore
-    get_type_hints as get_type_hints,
-    is_typeddict as is_typeddict,  # pyright: ignore
-    no_type_check as no_type_check,
-    no_type_check_decorator as no_type_check_decorator,
-    overload as overload,
-)
+# Effectively alias this third-party "beartype.typing" submodule to the standard
+# "typing" module by unconditionally importing all explicitly exported public
+# attributes from the standard "typing" module *BEFORE* conditionally overriding
+# a proper subset of these attributes with non-standard alternatives below.
+from typing import *  # pyright: ignore
 
-# ....................{ IMPORTS ~ version : at least       }....................
-# Import all public attributes of the "typing" module both available under at
-# least some Python interpreter version *AN* not yet deprecated by a subsequent
-# Python interpreter version under their original names.
-
-#FIXME: mypy is now emitting non-fatal warnings about our failing to import from
-#"typing_extensions", which is both an overly strongly opinionated position for
-#mypy to stake out *AND* a bad opinion at that, because "typing_extensions" is
-#a third-party package. Ideally, mypy shouldn't be pushing *ANY* third-party
-#packages. These warnings resemble:
-#    beartype/typing/__init__.py:145: note: Use `from typing_extensions import Final` instead
-#    beartype/typing/__init__.py:145: note: See https://mypy.readthedocs.io/en/stable/runtime_troubles.html#using-new-additions-to-the-typing-module
-#    beartype/typing/__init__.py:145: note: Use `from typing_extensions import Literal` instead
-#
-#That's not the worst, however. mypy is erroneously ignoring our intentional
-#"# type: ignore[attr-defined]" pragmas here. It's likely that the ultimate
-#culprit is our use of beartype-specific "IS_PYTHON_AT_LEAST_*" boolean globals.
-#Instead, mypy appears to only support hard-coded tests against the
-#"sys.version_info" tuple: e.g.,
-#    if sys.version_info >= (3, 8):
-#
-#To resolve this, we should consider:
-#* Abandoning our usage of beartype-specific "IS_PYTHON_AT_LEAST_*" boolean
-#  globals for hard-coded tests against the "sys.version_info" tuple (above).
-#* Submitting an upstream issue requesting that mypy respect the
-#  "# type: ignore[attr-defined]" pragma rather than emitting warnings here.
-
-# If the active Python interpreter targets Python >= 3.11...
-if _IS_PYTHON_AT_LEAST_3_11:
-    from typing import (  # type: ignore[attr-defined]
-       LiteralString as LiteralString,  # pyright: ignore
-       Never as Never,  # pyright: ignore
-       NotRequired as NotRequired,  # pyright: ignore
-       Required as Required,  # pyright: ignore
-       Self as Self,  # pyright: ignore
-       TypeVarTuple as TypeVarTuple,  # pyright: ignore
-       Unpack as Unpack,  # pyright: ignore
-       assert_never as assert_never,  # pyright: ignore
-       assert_type as assert_type,  # pyright: ignore
-       clear_overloads as clear_overloads,  # pyright: ignore
-       dataclass_transform as dataclass_transform,  # pyright: ignore
-       get_overloads as get_overloads,  # pyright: ignore
-       reveal_type as reveal_type,  # pyright: ignore
+# ....................{ ALIAS                              }....................
+# If the active Python interpreter is *NOT* performing static type-checking
+# (e.g., mypy, pyright), override the default implementations of a proper subset
+# of public attributes explicitly exported by the standard "typing" module with
+# semantically equivalent runtime-friendly alternatives. Specifically...
+if not TYPE_CHECKING:
+    # Defer runtime-specific imports.
+    from beartype._util.py.utilpyversion import (
+        IS_PYTHON_AT_MOST_3_16  as _IS_PYTHON_AT_MOST_3_16,
     )
 
-    # If the active Python interpreter targets Python >= 3.12...
-    if _IS_PYTHON_AT_LEAST_3_12:
-        from typing import (  # type: ignore[attr-defined]
-            TypeAliasType as TypeAliasType,  # pyright: ignore
-            override as override,  # pyright: ignore
-        )
-
-        # If the active Python interpreter targets Python >= 3.13...
-        if _IS_PYTHON_AT_LEAST_3_13:
-            from typing import (  # type: ignore[attr-defined]
-                NoDefault as NoDefault,  # pyright: ignore
-                ReadOnly as ReadOnly,  # pyright: ignore
-                TypeIs as TypeIs,  # pyright: ignore
-                get_protocol_members as get_protocol_members,  # pyright: ignore
-                is_protocol as is_protocol,  # pyright: ignore
-            )
-
-            # If the active Python interpreter targets Python >= 3.14...
-            if _IS_PYTHON_AT_LEAST_3_14:
-                from typing import (  # type: ignore[attr-defined]
-                    evaluate_forward_ref as evaluate_forward_ref,  # pyright: ignore
-                )
-
-# ....................{ IMPORTS ~ version : at most        }....................
-# Import all public attributes of the "typing" module both available under at
-# most some Python interpreter version (typically due to having been deprecated
-# by a prior Python interpreter version).
-
-# If the active Python interpreter targets at most Python <= 3.16...
-if _IS_PYTHON_AT_MOST_3_16:
-    # Import the PEP 585-compliant "collections.abc.ByteString" attribute
-    # under 3.9 <= Python <= 3.13. Both "collections.abc.ByteString" *AND*
-    # "typing.ByteString" have been scheduled for removal under Python 3.17 by
-    # the upstream CPython issue:
-    #     https://github.com/python/cpython/issues/91896
-    #
-    # Note that these attributes were originally scheduled for removal under
-    # Python 3.14. This removal was since deferred by three minor versions (and
-    # thus three years) to inform downstream third-party packages with proper
-    # "DeprecationWarning" warnings emitted by the "typing" module.
-    from collections.abc import ByteString as ByteString  # type: ignore[attr-defined]
-
-    # If the active Python interpreter targets at most Python <= 3.15...
-    if _IS_PYTHON_AT_MOST_3_15:
-        # Import the PEP 484-compliant "typing.AnyStr" attribute under 3.9 <=
-        # Python <= 3.15. This attribute has been scheduled for removal under
-        # Python 3.16 by the upstream CPython issue:
-        #     https://github.com/python/cpython/issues/105578
-        from typing import AnyStr as AnyStr
-
-# ....................{ PEP ~ 544                          }....................
-# If this interpreter is performing static type-checking (e.g., via mypy), defer
-# to the standard library versions of the family of "Supports*" protocols.
-if TYPE_CHECKING:
-    from typing import (  # type: ignore[attr-defined]
-        Protocol as Protocol,  # pyright: ignore
-        SupportsAbs as SupportsAbs,
-        SupportsBytes as SupportsBytes,
-        SupportsComplex as SupportsComplex,
-        SupportsFloat as SupportsFloat,
-        SupportsIndex as SupportsIndex,  # pyright: ignore
-        SupportsInt as SupportsInt,
-        SupportsRound as SupportsRound,
-        runtime_checkable as runtime_checkable,  # pyright: ignore
-    )
-# Else, this interpreter is *NOT* performing static type-checking. In this
-# case, prefer our optimized PEP 544 attributes.
-else:
+    # ....................{ PEP ~ 544                      }....................
+    # Alias both the PEP 544-compliant "Protocol" superclass and all related
+    # "Supports*" protocols to beartype-specific alternatives, which exhibit
+    # optimized runtime performed over their default implementations by the
+    # standard "typing" module.
     from beartype.typing._typingpep544 import (
         Protocol as Protocol,
         SupportsAbs as SupportsAbs,
@@ -343,61 +181,12 @@ else:
         runtime_checkable as runtime_checkable,
     )
 
-# ....................{ PEP ~ 585                          }....................
-# If the active Python interpreter is performing static type-checking (e.g.,
-# "mypy"), import *ALL* public attributes of the "typing" module deprecated by
-# PEP 585 as their original values.
-#
-# This is intentionally performed *BEFORE* the corresponding "else:" branch.
-# Why? Because "mypy". If the order of these two branches is reversed, "mypy"
-# emits errors when attempting to subscript *ANY* builtin type: e.g.,
-#     error: "tuple" is not subscriptable  [misc]
-if TYPE_CHECKING:
-    from typing import (
-        AbstractSet as AbstractSet,
-        AsyncContextManager as AsyncContextManager,
-        AsyncGenerator as AsyncGenerator,
-        AsyncIterable as AsyncIterable,
-        AsyncIterator as AsyncIterator,
-        Awaitable as Awaitable,
-        Callable as Callable,
-        ChainMap as ChainMap,
-        Collection as Collection,
-        Container as Container,
-        ContextManager as ContextManager,
-        Coroutine as Coroutine,
-        Counter as Counter,
-        DefaultDict as DefaultDict,
-        Deque as Deque,
-        Dict as Dict,
-        FrozenSet as FrozenSet,
-        Generator as Generator,
-        Hashable as Hashable,
-        ItemsView as ItemsView,
-        Iterable as Iterable,
-        Iterator as Iterator,
-        KeysView as KeysView,
-        List as List,
-        Mapping as Mapping,
-        Match as Match,
-        MappingView as MappingView,
-        MutableMapping as MutableMapping,
-        MutableSequence as MutableSequence,
-        MutableSet as MutableSet,
-        OrderedDict as OrderedDict,
-        Pattern as Pattern,
-        Reversible as Reversible,
-        Set as Set,
-        Sized as Sized,
-        Tuple as Tuple,
-        Type as Type,
-        Sequence as Sequence,
-        ValuesView as ValuesView,
-    )
-# Else, the active Python interpreter is *NOT* performing static type-checking.
-# In this case, alias *ALL* public attributes of the "typing" module deprecated
-# by PEP 585 to their equivalent values elsewhere in the standard library.
-else:
+    # ....................{ PEP ~ 585                      }....................
+    # Alias *ALL* PEP 484-compliant public attributes defined by the standard
+    # "typing" module that have since been officially deprecated by PEP 585
+    # (e.g., "typing.ChainMap") to their semantically equivalent non-deprecated
+    # alternatives defined elsewhere in the standard library (e.g.,
+    # "collections.ChainMap").
     from collections import (
         ChainMap as ChainMap,
         Counter as Counter,
@@ -440,9 +229,36 @@ else:
         Pattern as Pattern,
     )
 
-    Dict = dict  # type: ignore[misc]
-    FrozenSet = frozenset  # type: ignore[misc]
-    List = list  # type: ignore[misc]
-    Set = set  # type: ignore[misc]
-    Tuple = tuple  # type: ignore[assignment]
-    Type = type  # type: ignore[assignment]
+    # Trivially alias all remaining deprecated PEP 484-compliant type hint
+    # factories to their equivalent builtins.
+    Dict = dict
+    FrozenSet = frozenset
+    List = list
+    Set = set
+    Tuple = tuple
+    Type = type
+
+    # ....................{ PEP ~ 585 : removed            }....................
+    # Alias *ALL* PEP 484-compliant public attributes defined by the standard
+    # "typing" module that have since been quietly removed from that module
+    # sooner than PEP 585 mandates these attributes be removed. Technically,
+    # CPython itself is violating PEP 585 here. Pragmatically, nobody cares.
+
+    # If the active Python interpreter targets at most Python <= 3.16...
+    if _IS_PYTHON_AT_MOST_3_16:
+        # Alias the PEP 484-compliant "ByteString" type hint singleton to the
+        # PEP 585-compliant "collections.abc.ByteString" abstract base class
+        # (ABC). Both "collections.abc.ByteString" *AND* "typing.ByteString"
+        # have been scheduled for removal under Python 3.17 by the upstream
+        # CPython issue:
+        #     https://github.com/python/cpython/issues/91896
+        #
+        # Note that these attributes were originally scheduled for removal under
+        # Python 3.14. This removal was since deferred by three minor versions
+        # (and thus three years) to inform downstream third-party packages with
+        # proper "DeprecationWarning" warnings emitted by the "typing" module.
+        from collections.abc import ByteString as ByteString
+# Else, the active Python interpreter is performing static type-checking. In
+# this case, force the unclean static type-checker to pretend that this
+# "beartype.typing" submodule is a trivial alias of the "typing" module by...
+# *DOING ABSOLUTELY NOTHING WHATSOEVER*. Beartype: "You win by doing nothing."

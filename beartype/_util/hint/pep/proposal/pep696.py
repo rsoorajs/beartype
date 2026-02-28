@@ -98,10 +98,10 @@ def get_hint_pep484612646_typearg_packed_default_or_sentinel(
     hint_default = SENTINEL
 
     # If the active Python interpreter targets Python >= 3.13 and thus supports
-    # PEP 696.
+    # PEP 696...
     if IS_PYTHON_AT_LEAST_3_13:
         # Defer version-specific imports.
-        from beartype.typing import NoDefault  # pyright: ignore
+        from typing import NoDefault  # type: ignore[attr-defined]
 
         # Child hint to which this type parameter defaults if this type
         # parameter has a default *OR* the sentinel placeholder otherwise.

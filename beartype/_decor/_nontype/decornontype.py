@@ -27,7 +27,10 @@ from beartype._decor._nontype._decornontypemap import (
     MODULE_TO_TYPE_NAME_TO_BEARTYPE_DECORATOR_get,
     MODULE_TO_SUPERTYPE_NAME_TO_BEARTYPE_DECORATOR_get,
 )
-from beartype._data.py.databuiltins import BUILTINS_DICT
+from beartype._data.py.databuiltins import (
+    BUILTINS_DICT,
+    GLOBAL_SCOPE_BUILTINS_BASENAME,
+)
 from beartype._data.typing.datatyping import BeartypeableT
 from beartype._decor._nontype._wrap.wrapmain import generate_code
 from beartype._util.bear.utilbearblack import is_object_blacklisted
@@ -413,7 +416,6 @@ def beartype_func(
         return func  # type: ignore[return-value]
     # Else, that callable requires type-checking. Let's *REALLY* do this, fam.
 
-    # ....................{ FUNC                           }....................
     # If the type hint dictionary associated with the decorated callable is
     # dirty (i.e., changed from the original "__annotations__" dunder dictionary
     # annotating that callable), register these changes in a manner compliant
@@ -423,12 +425,11 @@ def beartype_func(
     # function returned by the @beartype decorator. Look. It's complicated.
     decor_meta.set_func_annotations_if_dirty()
 
-    # Global scope of the currently decorated unwrapped callable.
-    func_wrappee_wrappee_globals = get_func_globals(
-        decor_meta.func_wrappee_wrappee)
-
+    # ....................{ SCOPE                          }....................
     # Global scope of the type-checking wrapper function to be defined below,
-    # defined as the union of (in order):
+    # initialized to the global scope of the currently decorated unwrapped
+    # callable. This global scope is subsequently defined as the semantic union
+    # of (in order):
     # * The builtins dictionary mapping from the name to value of all builtin
     #   attributes (i.e., globally available by default *WITHOUT* requiring
     #   explicit importation).
@@ -461,44 +462,60 @@ def beartype_func(
     #     type parameter scopes of parent callables of the currently decorated
     #     closure. See also unit tests in the
     #     test-specific "data_pep484ref_decor_pep695" data submodule.
-
-    #FIXME: *LOL*. Crazy stuff, bro. First, quote Guido the Man Himself here:
-    #    [CPython] looks at the globals, which contain a special magic entry
-    #    __builtins__ (with an 's') which is the dict where built-in functions
-    #    are looked up. When this dict is the same object as the default
-    #    built-in dict (which is __builtin__.__dict__ where __builtin__ --
-    #    without 's' -- is the module defining the built-in functions) it gives
-    #    you supervisor privileges;
-    #
-    #That quote derives from this ancient mailing list thread:
-    #    http://mail.python.org/pipermail/python-ideas/2009-March/003821.html
-    #
-    #That quote is why we intentionally set "__builtins__" to the unfiltered
-    #"BUILTINS_DICT" rather than the filtered "BUILTINS_NAME_TO_VALUE". The
-    #former grants us "supervisor privileges," whatever that means. The latter
-    #does not. @beartype prefers power. Ergo, we choose power.
-    #
-    #Next, note that it is *NOT* sufficient to test whether
-    #"'__builtins__' not in func_wrapper_globals". Why? Because the PEP
-    #484-compliant "typing.NamedTuple" superclass. For unknown reasons, that
-    #superclass dynamically generates a problematic unique __new__() dunder
-    #method for each subclass of this superclass. That method suffers various
-    #deficiencies. Including those widely documented elsewhere (e.g., in our
-    #"data_pep563_pep484" submodule), that superclass *INSANELY* sets the
-    #"__builtins__" dunder attribute bound to that method to the empty
-    #dictionary. Accepting empty "__builtins__" dictionaries would induce syntax
-    #errors on the first call to the function defined below wrapping that
-    #__new__() dunder method with type-checking. Ergo, we intentionally prohibit
-    #empty "__builtins__" dictionaries as well. *sigh*
-    #FIXME: Define the following new string constant in our existing
-    #"databuiltins" submodule, please:
-    #    GLOBAL_SCOPE_BUILTINS_BASENAME = '__builtins__'
-    #Then use that below rather than this hacky magic string.
     func_wrapper_globals = get_func_globals(decor_meta.func_wrappee_wrappee)
-    if not func_wrapper_globals.get('__builtins__'):
-        func_wrapper_globals = func_wrapper_globals.copy()
-        func_wrapper_globals['__builtins__'] = BUILTINS_DICT
 
+    # If the global scope of the currently decorated unwrapped callable either
+    # fails to define the builtins scope under the standard dunder name expected
+    # by Python *OR* defines an empty builtins scope that destroys the
+    # type-checking code dynamically generated for the wrapper defined below...
+    #
+    # Note that it is *NOT* sufficient to test:
+    #     if GLOBAL_SCOPE_BUILTINS_BASENAME not in func_wrapper_globals:
+    #
+    # Why? Because the PEP 484-compliant "typing.NamedTuple" superclass. For
+    # unknown reasons, that superclass dynamically generates a problematic
+    # unique __new__() dunder method for each subclass of this superclass. That
+    # method suffers various deficiencies. Including those widely documented
+    # elsewhere (e.g., in our "data_pep563_pep484" submodule), that superclass
+    # *INSANELY* sets the "__builtins__" dunder attribute bound to that method
+    # to the empty dictionary. Accepting empty "__builtins__" dictionaries would
+    # induce syntax errors on the first call to the function defined below
+    # wrapping that __new__() dunder method with type-checking. Ergo, we
+    # intentionally prohibit empty "__builtins__" dictionaries as well. *sigh*
+    if not func_wrapper_globals.get(GLOBAL_SCOPE_BUILTINS_BASENAME):
+        # Shallowly copy this global scope to avoid harmfully mutating the
+        # currently decorated unwrapped callable in unexpected ways.
+        func_wrapper_globals = func_wrapper_globals.copy()
+
+        # Define the builtins scope under the standard dunder name expected by
+        # Python to the exact builtins dictionary expected by CPython. This
+        # builtins dictionary is unfiltered and thus contains fake builtins
+        # (i.e., types that are *NOT* builtin but nonetheless erroneously
+        # masquerade as being builtin, infamously including the type of the
+        # "None" singleton) generally considered harmful throughout the
+        # remainder of this codebase. Nonetheless, we intentionally set this
+        # builtins scope to the unfiltered dictionary "BUILTINS_DICT" rather
+        # than the filtered dictionary "BUILTINS_NAME_TO_VALUE". Why? Because
+        # the former grants us "supervisor privileges," whatever that means; the
+        # latter does not. @beartype prefers power. Ergo, we choose power:
+        #    [CPython] looks at the globals, which contain a special magic entry
+        #    __builtins__ (with an 's') which is the dict where built-in
+        #    functions are looked up. When this dict is the same object as the
+        #    default built-in dict (which is __builtin__.__dict__ where
+        #    __builtin__ -- without 's' -- is the module defining the built-in
+        #    functions) it gives you supervisor privileges;
+        #
+        #None of this particularly makes sense. But it doesn't have to. It's
+        #sacred religious dogma at this point. Indeed, the above quote hails
+        #from Guido the All-Father Himself at this ancient mailing list thread:
+        #    http://mail.python.org/pipermail/python-ideas/2009-March/003821.html
+        func_wrapper_globals[GLOBAL_SCOPE_BUILTINS_BASENAME] = BUILTINS_DICT
+    # Else, the global scope of the currently decorated unwrapped callable
+    # defines a non-empty builtins scope under its standard dunder name. In this
+    # case, we charitably assume that callable knew what it was doing by
+    # silently preserving this global scope unmodified.
+
+    # ....................{ FUNC                           }....................
     # Function wrapping that callable with type-checking to be returned.
     #
     # For efficiency, this wrapper accesses *ONLY* local rather than global
